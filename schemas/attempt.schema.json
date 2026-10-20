@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "teach/attempt.schema.json",
+  "title": "Attempt: one line of tracks/<track>/attempts.jsonl",
+  "description": "Append-only evidence, written only by `tools/learn record` (kind card) and `tools/learn task` (kind task). Never edited or deleted: a correction is a note in misconceptions.md or handoff.md. Old rows may carry a naive timestamp (local time, no offset). Unknown fields are allowed.",
+  "type": "object",
+  "required": ["ts", "kind", "node"],
+  "properties": {
+    "ts": {"type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}"},
+    "kind": {"enum": ["card", "task"]},
+    "node": {"type": ["string", "null"]}
+  },
+  "oneOf": [
+    {
+      "properties": {
+        "kind": {"const": "card"},
+        "card": {"type": "string"},
+        "type": {"enum": ["mcq", "predict-output", "spot-the-bug", "recall", "explain"]},
+        "correct": {"enum": ["yes", "partial", "no"]},
+        "confidence": {"enum": [1, 2, 3, null], "description": "null = not asked"},
+        "misconception": {"type": ["string", "null"], "description": "only when correct != yes"},
+        "delayed": {"type": "boolean", "description": "the card was last answered on an earlier day"},
+        "session": {"type": ["string", "null"]},
+        "choice": {"type": ["string", "null"], "pattern": "^[A-DX]$", "description": "option letter in stored order; X = 'Bilmiyorum' in rows written before dont_know existed (newer rows: null + dont_know)"},
+        "dont_know": {"const": true},
+        "answer_text": {"type": "string", "description": "the learner's own words"},
+        "source": {"enum": ["chat", "lesson", "predict"], "description": "absent = chat; lesson / predict are diagnostic only (no scheduling, no mastery)"}
+      },
+      "required": ["card", "type", "correct", "delayed"]
+    },
+    {
+      "properties": {
+        "kind": {"const": "task"},
+        "task": {"type": "string"},
+        "status": {"enum": ["started", "passed", "failed", "explained"]},
+        "hints_used": {"type": ["integer", "null"], "minimum": 0},
+        "note": {"type": ["string", "null"]}
+      },
+      "required": ["task", "status"]
+    }
+  ]
+}

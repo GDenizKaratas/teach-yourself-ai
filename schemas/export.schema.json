@@ -1,0 +1,467 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "teach/export.schema.json",
+  "title": "learner/export.json (schema teach.export/1)",
+  "description": "The one data source of the dashboard and the lessons' mini maps. Generated only by `tools/learn refresh` / `export`; never edited by hand. Within teach.export/1 changes are additive (new keys may appear; existing keys keep their meaning and type). Never contains card prompts, options, answers, explanations, misconception ids or profile text.",
+  "type": "object",
+  "required": [
+    "schema",
+    "generated",
+    "format_version",
+    "generated_at",
+    "data_warnings",
+    "learner",
+    "tracks"
+  ],
+  "properties": {
+    "schema": {
+      "const": "teach.export/1"
+    },
+    "generated": {
+      "const": true
+    },
+    "format_version": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "generated_at": {
+      "type": "string"
+    },
+    "data_warnings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "file",
+          "line"
+        ]
+      }
+    },
+    "learner": {
+      "type": "object",
+      "required": [
+        "active_track",
+        "study_days",
+        "streak",
+        "started",
+        "gains",
+        "milestones",
+        "recent"
+      ],
+      "properties": {
+        "active_track": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "study_days": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/day"
+          }
+        },
+        "streak": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "started": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/day"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "gains": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "track",
+              "node",
+              "delayed"
+            ],
+            "properties": {
+              "track": {
+                "type": "string"
+              },
+              "node": {
+                "type": "string"
+              },
+              "delayed": {
+                "type": "boolean"
+              }
+            }
+          }
+        },
+        "milestones": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "day",
+              "id"
+            ],
+            "properties": {
+              "day": {
+                "$ref": "#/$defs/day"
+              },
+              "id": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "recent": {
+          "type": "array",
+          "maxItems": 14,
+          "description": "newest first: what each (day, track) study pair changed",
+          "items": {
+            "type": "object",
+            "required": [
+              "day",
+              "track",
+              "done",
+              "started",
+              "slipping",
+              "remembered",
+              "answers",
+              "milestones"
+            ],
+            "properties": {
+              "day": {
+                "$ref": "#/$defs/day"
+              },
+              "track": {
+                "type": "string"
+              },
+              "done": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "node",
+                    "level"
+                  ],
+                  "properties": {
+                    "node": {
+                      "type": "string"
+                    },
+                    "level": {
+                      "enum": [
+                        "retained",
+                        "owned",
+                        "durable"
+                      ]
+                    }
+                  }
+                }
+              },
+              "started": {
+                "$ref": "#/$defs/ids"
+              },
+              "slipping": {
+                "$ref": "#/$defs/ids"
+              },
+              "remembered": {
+                "$ref": "#/$defs/ids"
+              },
+              "answers": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "milestones": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "tracks": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/track"
+      }
+    }
+  },
+  "$defs": {
+    "day": {
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+    },
+    "ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "str_or_null": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "level": {
+      "enum": [
+        "new",
+        "struggling",
+        "learning",
+        "checked",
+        "retained",
+        "owned",
+        "durable"
+      ]
+    },
+    "track": {
+      "type": "object",
+      "required": [
+        "id",
+        "title",
+        "map",
+        "next",
+        "due",
+        "lessons",
+        "tasks",
+        "files",
+        "docs",
+        "last_studied",
+        "resume"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "map": {
+          "type": "object",
+          "required": [
+            "nodes",
+            "edges",
+            "problems"
+          ],
+          "properties": {
+            "nodes": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/node"
+              }
+            },
+            "edges": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "from",
+                  "to"
+                ]
+              }
+            },
+            "problems": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "next": {
+          "$ref": "#/$defs/str_or_null"
+        },
+        "due": {
+          "type": "object",
+          "required": [
+            "today",
+            "tomorrow"
+          ],
+          "description": "today: due cards; nodes_today: nodes they cover (a review asks one card per node); studied / fresh: nodes past 'new' / of those, not due and not slipping (the dashboard's memory-freshness %)",
+          "properties": {
+            "today": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "tomorrow": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "nodes_today": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "studied": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "fresh": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        },
+        "lessons": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "path",
+              "title",
+              "result_recorded",
+              "slug",
+              "nodes",
+              "docs",
+              "sources",
+              "number"
+            ],
+            "properties": {
+              "path": {
+                "type": "string"
+              },
+              "title": {
+                "type": "string"
+              },
+              "result_recorded": {
+                "type": [
+                  "boolean",
+                  "null"
+                ],
+                "description": "null = the lesson binds no card"
+              },
+              "slug": {
+                "type": "string"
+              },
+              "nodes": {
+                "$ref": "#/$defs/ids"
+              },
+              "docs": {
+                "$ref": "#/$defs/ids"
+              },
+              "sources": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "title",
+                    "href"
+                  ]
+                }
+              },
+              "number": {
+                "type": "integer"
+              }
+            }
+          }
+        },
+        "tasks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "id",
+              "node",
+              "last_status"
+            ]
+          }
+        },
+        "files": {
+          "type": "object"
+        },
+        "docs": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "id",
+              "type",
+              "title",
+              "path"
+            ]
+          }
+        },
+        "last_studied": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/day"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "resume": {
+          "$ref": "#/$defs/str_or_null",
+          "description": "the handoff's 'Öğrenci için' line"
+        }
+      }
+    },
+    "node": {
+      "type": "object",
+      "required": [
+        "id",
+        "title",
+        "statement",
+        "kind",
+        "definition",
+        "summary",
+        "depends_on",
+        "in_map",
+        "level",
+        "slipping",
+        "evidence"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "title": {
+          "$ref": "#/$defs/str_or_null"
+        },
+        "statement": {
+          "$ref": "#/$defs/str_or_null",
+          "description": "map.md, tutor-facing one-liner"
+        },
+        "kind": {
+          "$ref": "#/$defs/str_or_null"
+        },
+        "definition": {
+          "$ref": "#/$defs/str_or_null",
+          "description": "map.md 'tanım (öğrenci)': the node card's Tanım"
+        },
+        "summary": {
+          "$ref": "#/$defs/str_or_null",
+          "description": "the node's cheatsheet.md section (Markdown): the node card's Özetin"
+        },
+        "depends_on": {
+          "$ref": "#/$defs/ids"
+        },
+        "in_map": {
+          "type": "boolean"
+        },
+        "level": {
+          "$ref": "#/$defs/level"
+        },
+        "slipping": {
+          "type": "boolean"
+        },
+        "evidence": {
+          "type": "object",
+          "required": [
+            "attempts",
+            "correct",
+            "delayed_correct",
+            "tasks_passed"
+          ]
+        }
+      }
+    }
+  }
+}

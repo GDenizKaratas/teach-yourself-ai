@@ -1,0 +1,419 @@
+/* Ortak ders stili — tüm dersler, referans belgeleri (ve ileride panel) bunu kullanır.
+ * Görsel dil: LearnHarness — sade, net, hedefe yönelik. Siyah / beyaz / gri; tek sarı vurgu yalnız haritalardaki sıradaki düğüm.
+ * Çevrimdışı: ağdan font yok; sistem font yığınları kullanılır.
+ *
+ * ── TOKENLAR ── Başka sayfalar (ör. Python'un ürettiği panel) bu dosyayı bağlar ya da
+ *    "@tokens-begin" ile "@tokens-end" işaretleri arasını olduğu gibi satır içine kopyalar.
+ *  Renk      --bg           sayfa zemini            --surface     yükseltilmiş yüzey (kart, panel)
+ *            --surface-2    seçili/hover yüzey      --ink         ana metin
+ *            --muted        ikincil metin, etiket   --border      çizgi, kutu kenarı
+ *            --border-soft  çok hafif ayırıcı
+ *            --current      TEK vurgu, YALNIZ haritalarda: sarı = "sıradaki düğüm" (lesson-map, pano haritası). Başka hiçbir yerde
+ *                         kullanma; geri kalan her şey siyah / beyaz / gri. --current-soft (zemin), --current-glow (hale)
+ *            --good / --good-soft  doğru              --bad / --bad-soft  yanlış  (gri tonları: doğru = koyu çerçeve + ✓,
+ *                         yanlış = kesikli soluk çerçeve + ✗; renk yok)
+ *  Font      --font-ui      mono: etiketler, düğmeler (BÜYÜK HARF + aralıklı, .ui-label)
+ *            --font-prose   sans: okuma metni        --font-title  serif: başlıklar
+ *  Boyut     --text-xs 11 · --text-sm 12.5 · --text-base 14 · --text-prose 17 · --text-xl 20
+ *            --text-2xl 25 · --text-3xl 32 (px)      --leading-prose 1.6 · --tracking-ui .08em
+ *  Aralık    --s-1 … --s-8 = 4 · 8 · 12 · 16 · 20 · 24 · 32 · 48 px (4px tabanı)
+ *  Köşe      --r-sm 4 · --r-md 8 · --r-lg 12 px      --measure  okuma genişliği (42rem)
+ *  Eski adlar (eski dersler satır içinde kullanıyor; silme): --rule --accent --accent-soft
+ *            --panel --serif --sans --mono
+ *  Tema: varsayılan sistem tercihi (prefers-color-scheme); <html data-theme="light|dark"> zorlar.
+ */
+
+/* @tokens-begin */
+:root {
+  --bg: #fafafa;
+  --surface: #f1f1f1;
+  --surface-2: #e7e7e7;
+  --ink: #1a1a1a;
+  --muted: #6b6b6b;
+  --border: #cfcfcf;
+  --border-soft: #e2e2e2;
+  --current: #b88600;
+  --current-soft: rgba(234, 179, 8, .16);
+  --current-glow: rgba(234, 179, 8, .55);
+  --good: #1a1a1a;
+  --good-soft: #e7e7e7;
+  --bad: #8a8a8a;
+  --bad-soft: #f1f1f1;
+  --done-fill: #ffffff;         /* biten konu: beyaz kutu / nokta */
+  --done-ink: #1a1a1a;
+  --done-glow: rgba(0, 0, 0, .12);
+  --wrong: #b3261e;             /* yalnızca yanlış seçilen şık */
+  --wrong-soft: rgba(179, 38, 30, .07);
+
+  --font-ui: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  --font-prose: system-ui, -apple-system, "Segoe UI", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --font-title: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, "Times New Roman", serif;
+
+  --text-xs: 12px;
+  --text-sm: 12.5px;
+  --text-base: 14px;
+  --text-prose: 17px;
+  --text-xl: 20px;
+  --text-2xl: 25px;
+  --text-3xl: 32px;
+  --leading-prose: 1.6;
+  --tracking-ui: .08em;
+
+  --s-1: 4px; --s-2: 8px; --s-3: 12px; --s-4: 16px; --s-5: 20px; --s-6: 24px; --s-7: 32px; --s-8: 48px;
+  --r-sm: 4px; --r-md: 8px; --r-lg: 12px;
+  --measure: 42rem;
+
+  /* eski adlar → yeni tokenlar */
+  --rule: var(--border-soft);
+  --accent: var(--ink);
+  --accent-soft: var(--surface);
+  --panel: var(--surface);
+  --serif: var(--font-title);
+  --sans: var(--font-prose);
+  --mono: var(--font-ui);
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #141414; --surface: #1c1c1c; --surface-2: #2a2a2a;
+    --ink: #e6e6e6; --muted: #8d8d8d; --border: #434343; --border-soft: #2c2c2c;
+    --current: #facc15; --current-soft: rgba(250, 204, 21, .14); --current-glow: rgba(250, 204, 21, .45);
+    --good: #e6e6e6; --good-soft: #2a2a2a; --bad: #8d8d8d; --bad-soft: #1c1c1c;
+    --done-fill: #f2f2f2; --done-ink: #141414; --done-glow: rgba(255, 255, 255, .35);
+    --wrong: #f2726b; --wrong-soft: rgba(242, 114, 107, .12);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #141414; --surface: #1c1c1c; --surface-2: #2a2a2a;
+  --ink: #e6e6e6; --muted: #8d8d8d; --border: #434343; --border-soft: #2c2c2c;
+  --current: #facc15; --current-soft: rgba(250, 204, 21, .14); --current-glow: rgba(250, 204, 21, .45);
+  --good: #e6e6e6; --good-soft: #2a2a2a; --bad: #8d8d8d; --bad-soft: #1c1c1c;
+  --done-fill: #f2f2f2; --done-ink: #141414; --done-glow: rgba(255, 255, 255, .35);
+  --wrong: #f2726b; --wrong-soft: rgba(242, 114, 107, .12);
+  color-scheme: dark;
+}
+/* @tokens-end */
+
+/* ── Taban ─────────────────────────────────────────────────────────── */
+* { box-sizing: border-box; }
+html { font-size: 16px; }
+body {
+  margin: 0; background: var(--bg); color: var(--ink);
+  font-family: var(--font-prose); font-size: var(--text-prose); line-height: var(--leading-prose);
+  -webkit-font-smoothing: antialiased;
+}
+main { max-width: var(--measure); margin: 0 auto; padding: var(--s-8) var(--s-4) 6rem; }
+:focus { outline: none; }
+:focus-visible { outline: 1px solid var(--muted); outline-offset: 2px; }
+::selection { background: var(--surface-2); }
+
+/* Mono etiket: her yerde aynı "LABEL" görünümü */
+.ui-label, .kicker, .callout .label, .source .label, .quiz-label {
+  font-family: var(--font-ui); font-size: var(--text-xs); font-weight: 500; line-height: 1.4;
+  letter-spacing: var(--tracking-ui); text-transform: uppercase; color: var(--muted);
+}
+
+/* ── Başlıklar ─────────────────────────────────────────────────────── */
+.kicker { margin: 0 0 var(--s-3); }
+h1 { font-family: var(--font-title); font-weight: 700; font-size: var(--text-3xl); line-height: 1.2; letter-spacing: -.01em; margin: 0 0 var(--s-2); }
+.subtitle { color: var(--muted); font-size: var(--text-xl); line-height: 1.45; margin: 0 0 var(--s-6); }
+h2 { font-family: var(--font-title); font-weight: 700; font-size: var(--text-2xl); line-height: 1.3; margin: var(--s-8) 0 var(--s-3); }
+h3 { font-weight: 700; font-size: var(--text-prose); margin: var(--s-7) 0 var(--s-2); }
+p, li { hyphens: auto; }
+a { color: inherit; text-decoration: underline; text-decoration-color: var(--border); text-decoration-thickness: 1px; text-underline-offset: 3px; }
+a:hover { text-decoration-color: var(--ink); }
+b, strong { font-weight: 700; }
+em.term { font-style: normal; font-weight: 600; border-bottom: 1px dotted var(--muted); }
+.en { color: var(--muted); font-size: .85em; }
+code, .mono { font-family: var(--font-ui); font-size: .85em; }
+:not(pre) > code { background: var(--surface); border: 1px solid var(--border-soft); border-radius: var(--r-sm); padding: .05em .35em; }
+pre { font-family: var(--font-ui); font-size: var(--text-base); background: var(--surface); border: 1px solid var(--border-soft); border-radius: var(--r-md); padding: var(--s-3) var(--s-4); overflow-x: auto; line-height: 1.5; }
+pre code { font-size: inherit; }
+hr { border: 0; border-top: 1px solid var(--border-soft); margin: var(--s-8) 0; }
+
+/* Meta satırı (süre, kazanım) */
+.meta { font-family: var(--font-ui); font-size: var(--text-sm); line-height: 1.5; color: var(--muted); display: flex; flex-direction: column; gap: var(--s-1); padding: var(--s-3) 0; border-top: 1px solid var(--border-soft); border-bottom: 1px solid var(--border-soft); margin-bottom: var(--s-7); }
+.meta b { color: var(--muted); font-weight: 500; text-transform: uppercase; letter-spacing: var(--tracking-ui); font-size: var(--text-xs); margin-right: var(--s-1); }
+.meta span { color: var(--ink); }
+
+/* Kenar notu (eski): artık yüzmez, metnin içinde soluk bir blok. Yeni derslerde details.note kullan. */
+.sidenote { display: block; font-size: var(--text-base); line-height: 1.5; color: var(--muted); border-left: 1px solid var(--border); padding-left: var(--s-3); margin: var(--s-2) 0 var(--s-4); }
+
+/* ── Paneller ──────────────────────────────────────────────────────── */
+.callout { border: 1px solid var(--border); border-radius: var(--r-sm); padding: var(--s-4) var(--s-5); margin: var(--s-6) 0; }
+.callout > :first-child { margin-top: 0; } .callout > :last-child { margin-bottom: 0; }
+.callout.key { border-color: var(--ink); }
+.callout .label { display: block; margin-bottom: var(--s-2); }
+.callout.key .label { color: var(--ink); }
+blockquote { margin: var(--s-6) 0; padding: 0 0 0 var(--s-4); border-left: 1px solid var(--border); color: var(--muted); }
+blockquote cite { display: block; font-style: normal; font-family: var(--font-ui); font-size: var(--text-xs); letter-spacing: .04em; margin-top: var(--s-2); }
+
+/* Zaman çizelgesi */
+.timeline { list-style: none; padding: 0; margin: var(--s-5) 0; border-left: 1px solid var(--border); }
+.timeline li { position: relative; padding: 0 0 var(--s-3) var(--s-5); }
+.timeline li::before { content: ""; position: absolute; left: -4px; top: .6em; width: 7px; height: 7px; border-radius: 50%; background: var(--bg); border: 1px solid var(--ink); }
+.timeline .yr { font-family: var(--font-ui); font-size: var(--text-sm); color: var(--muted); margin-right: var(--s-2); }
+
+/* ── Ödeme matrisi / tablo (statik ve etkileşimli ortak) ───────────── */
+.payoff-wrap { margin: var(--s-6) 0; overflow-x: auto; }
+table.payoff { border-collapse: collapse; margin: 0 auto; font-family: var(--font-prose); font-size: var(--text-base); }
+table.payoff th, table.payoff td { padding: var(--s-2) var(--s-4); text-align: center; }
+table.payoff th { font-weight: 500; color: var(--muted); font-size: var(--text-sm); }
+table.payoff th.p1 { text-align: right; }
+table.payoff th.player { font-family: var(--font-ui); font-size: var(--text-xs); text-transform: uppercase; letter-spacing: var(--tracking-ui); color: var(--ink); font-weight: 500; }
+table.payoff td.cell { border: 1px solid var(--border); min-width: 6.5rem; font-family: var(--font-ui); font-size: var(--text-base); font-variant-numeric: tabular-nums; }
+table.payoff td.cell .a { color: var(--ink); font-weight: 700; }
+table.payoff td.cell .b { color: var(--ink); }
+table.payoff td.cell.clickable { cursor: pointer; transition: background .15s; }
+table.payoff td.cell.clickable:hover { background: var(--surface); }
+table.payoff td.cell.picked { background: var(--surface-2); box-shadow: inset 0 0 0 1px var(--ink); }
+table.payoff td.cell.is-ne { background: var(--good-soft); box-shadow: inset 0 0 0 1px var(--good); }
+table.payoff td.cell.wrong { background: var(--bad-soft); box-shadow: none; outline: 1px dashed var(--bad); outline-offset: -3px; }
+table.payoff .br { text-decoration: underline; text-decoration-color: var(--ink); text-decoration-thickness: 2px; text-underline-offset: 4px; }
+.payoff-caption { text-align: center; font-size: var(--text-sm); color: var(--muted); margin-top: var(--s-2); }
+
+/* ── Düğmeler ve geri bildirim ─────────────────────────────────────── */
+.controls { display: flex; flex-wrap: wrap; gap: var(--s-2); justify-content: center; margin-top: var(--s-3); }
+button.btn { font-family: var(--font-ui); font-size: var(--text-sm); line-height: 1.2; padding: var(--s-2) var(--s-3); border: 1px solid var(--border); background: var(--surface); color: var(--ink); border-radius: 6px; cursor: pointer; transition: background .15s, opacity .15s; }
+button.btn:hover:not([disabled]) { background: var(--surface-2); }
+button.btn.primary { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+button.btn.primary:hover:not([disabled]) { background: var(--ink); opacity: .88; }
+button.btn[disabled] { opacity: .35; cursor: default; }
+.feedback { font-size: var(--text-base); line-height: 1.5; margin-top: var(--s-3); padding: var(--s-3) var(--s-4); border-radius: var(--r-md); border: 1px solid transparent; border-left-width: 3px; display: none; }
+.feedback.show { display: block; }
+.feedback.ok { background: var(--good-soft); border-color: var(--good); color: var(--ink); }
+.feedback.no { background: var(--bad-soft); border-color: var(--bad); border-style: dashed; color: var(--ink); }
+
+/* ── Quiz kartı (LH soru kartı) ────────────────────────────────────── */
+.quiz { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-lg); padding: var(--s-4); margin: var(--s-6) 0; }
+.quiz-label { margin: 0 0 var(--s-1); }
+.quiz .q { margin: 0 0 var(--s-3); font-weight: 600; font-size: var(--text-prose); line-height: 1.5; }
+.quiz .q .num { font-family: var(--font-ui); color: var(--muted); font-weight: 500; margin-right: var(--s-2); }
+.quiz .opts { display: grid; gap: var(--s-2); }
+.quiz .opt { display: flex; align-items: flex-start; gap: var(--s-3); width: 100%; text-align: left; font-family: var(--font-prose); font-size: var(--text-base); line-height: 1.5; padding: var(--s-2) var(--s-3); border: 1px solid var(--border); background: transparent; color: var(--ink); border-radius: var(--r-md); cursor: pointer; transition: background .15s, border-color .15s; }
+.quiz .opt:hover:not([disabled]) { background: var(--surface-2); }
+.quiz .opt .radio { flex: none; width: 16px; height: 16px; margin-top: 2px; border-radius: 50%; border: 1px solid var(--muted); display: inline-flex; align-items: center; justify-content: center; }
+.quiz .opt.selected { border-color: var(--ink); background: var(--surface-2); }
+.quiz .opt.selected .radio { border-color: var(--ink); background: var(--ink); }
+.quiz .opt.selected .radio::after { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--bg); }
+.quiz .opt.dk { border-style: dashed; color: var(--muted); font-family: var(--font-ui); font-size: var(--text-sm); }
+.quiz .opt.dk.selected { color: var(--ink); }
+/* sonuç: doğru şık beyaz dolu (panodaki biten konu gibi), yanlış seçilen şık kırmızı */
+.quiz .opt.correct { background: var(--done-fill); color: var(--done-ink); border-color: var(--done-ink); border-width: 2px; box-shadow: 0 0 8px var(--done-glow); }
+.quiz .opt.correct .radio { border-color: var(--done-ink); }
+.quiz .opt.incorrect { background: var(--wrong-soft); border-color: var(--wrong); color: var(--ink); }
+.quiz .opt.correct::after, .quiz .opt.incorrect::after { margin-left: auto; padding-left: var(--s-2); font-family: var(--font-ui); font-weight: 700; }
+.quiz .opt.correct::after { content: "✓"; color: var(--done-ink); }
+.quiz .opt.incorrect::after { content: "✗"; color: var(--wrong); }
+.quiz .opt.incorrect .radio { border-color: var(--wrong); }
+.quiz .opt.correct.selected .radio { background: var(--done-ink); border-color: var(--done-ink); }
+.quiz .opt.incorrect.selected .radio { background: var(--wrong); border-color: var(--wrong); }
+.quiz .opt[disabled] { cursor: default; }
+.quiz .opt[disabled]:not(.correct):not(.incorrect):not(.selected) { opacity: .55; }
+
+.quiz-controls { margin: var(--s-4) calc(-1 * var(--s-4)) 0; border-top: 1px solid var(--border-soft); }
+.quiz-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2) var(--s-3); padding: var(--s-3) var(--s-4) 0; }
+.quiz-row > .ui-label { min-width: 7.5rem; }
+.conf-opts { display: inline-flex; border: 1px solid var(--border); border-radius: var(--r-md); overflow: hidden; }
+.conf-opts button { font-family: var(--font-ui); font-size: var(--text-sm); padding: 6px var(--s-3); border: 0; border-right: 1px solid var(--border); background: transparent; color: var(--muted); cursor: pointer; }
+.conf-opts button:last-child { border-right: 0; }
+.conf-opts button:hover:not([disabled]) { background: var(--surface-2); color: var(--ink); }
+.conf-opts button[aria-checked="true"] { background: var(--ink); color: var(--bg); }
+.conf-opts button[disabled] { cursor: default; }
+.quiz-row.dim { opacity: .4; }
+.quiz-row input.why-input { flex: 1 1 14rem; min-width: 0; font-family: var(--font-prose); font-size: var(--text-base); color: var(--ink); background: var(--bg); border: 1px solid var(--border); border-radius: var(--r-md); padding: 6px var(--s-3); }
+.quiz-row input.why-input:focus { border-color: var(--muted); outline: none; }
+.quiz-row input.why-input::placeholder { color: var(--muted); }
+.quiz-actions { display: flex; align-items: center; gap: var(--s-3); padding: var(--s-3) var(--s-4) 0; }
+.quiz-actions .hint, .quiz-record { font-family: var(--font-ui); font-size: var(--text-xs); color: var(--muted); }
+.quiz-actions .btn { margin-left: auto; }
+.quiz-record { margin-top: var(--s-3); line-height: 1.5; }
+.quiz-record b { font-weight: 500; color: var(--ink); }
+
+/* Skor ve ders sonucu satırı */
+.score { font-family: var(--font-ui); font-size: var(--text-sm); color: var(--muted); text-align: right; margin: var(--s-3) 0; }
+.score .result-line { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2); margin-top: var(--s-3); text-align: left; padding: var(--s-3); border: 1px solid var(--ink); border-radius: var(--r-md); background: var(--surface); }
+.score .result-line code { flex: 1 1 20rem; min-width: 0; background: var(--bg); border: 1px solid var(--border); padding: var(--s-2) var(--s-3); border-radius: var(--r-sm); user-select: all; font-size: var(--text-sm); color: var(--ink); overflow-wrap: anywhere; }
+.score .result-line .hint { font-size: var(--text-xs); color: var(--muted); flex-basis: 100%; }
+
+/* Açılır cevap (geri çağırma alıştırması) */
+details.recall { border: 1px dashed var(--border); border-radius: var(--r-md); padding: var(--s-3) var(--s-4); margin: var(--s-5) 0; }
+details.recall summary { cursor: pointer; font-weight: 600; font-size: var(--text-base); }
+details.recall summary::marker { color: var(--muted); }
+details.recall[open] summary { margin-bottom: var(--s-2); }
+
+/* ── Kaynak ve gezinme ─────────────────────────────────────────────── */
+.source { background: var(--surface); border: 1px solid var(--border-soft); border-radius: var(--r-md); padding: var(--s-4) var(--s-5); margin: var(--s-7) 0; font-size: var(--text-base); }
+.source .label { display: block; margin-bottom: var(--s-2); }
+.ask { font-size: var(--text-base); color: var(--muted); border: 1px dashed var(--border); border-radius: var(--r-md); padding: var(--s-3) var(--s-4); margin: var(--s-7) 0; }
+nav.lesson-nav { display: flex; justify-content: space-between; gap: var(--s-4); font-family: var(--font-ui); font-size: var(--text-sm); border-top: 1px solid var(--border-soft); padding-top: var(--s-4); margin-top: var(--s-8); }
+nav.lesson-nav a { text-decoration: none; }
+nav.lesson-nav a:hover { text-decoration: underline; }
+nav.lesson-nav .disabled { color: var(--muted); }
+.cite { font-family: var(--font-ui); font-size: .65em; vertical-align: super; line-height: 0; margin-left: 1px; }
+.cite a { text-decoration: none; color: var(--muted); }
+.cite a:hover { color: var(--ink); }
+ol.refs { font-size: var(--text-base); color: var(--muted); padding-left: var(--s-6); }
+ol.refs li { margin-bottom: var(--s-1); }
+ol.refs :target { color: var(--ink); background: var(--surface-2); }
+
+/* Referans belgeleri: sıkı yoğun düzen */
+dl.glossary dt { font-weight: 700; margin-top: var(--s-4); }
+dl.glossary dt .en { font-weight: 400; }
+dl.glossary dd { margin: var(--s-1) 0 0 0; }
+dl.glossary dd .seen { font-family: var(--font-ui); font-size: var(--text-xs); color: var(--muted); }
+ol.checklist > li { margin-bottom: var(--s-2); }
+
+/* Doğruluk tablosu bileşeni */
+table.tt th.var, table.tt td.var { color: var(--muted); }
+table.tt th.given, table.tt td.given { background: var(--surface); }
+table.tt td.fill { min-width: 3.4rem; height: 2.3rem; font-weight: 700; }
+table.tt td.fill:empty::after { content: "·"; color: var(--border); font-weight: 400; }
+table.tt td.ok { background: var(--good-soft); }
+table.tt td.wrong { background: var(--bad-soft); outline: 1px dashed var(--bad); outline-offset: -3px; }
+
+/* ── Diyagram (elle yazılmış satır içi SVG, LH plan görünümü) ───────
+ * <figure class="diagram-wrap"><svg class="diagram" viewBox="…" role="img" aria-label="…">
+ *   <g class="node visited"><rect x y width height/><text x y>Etiket</text></g>   (current | visited | dim | boş)
+ *   <path class="edge" d="M… L…"/>   ok başı otomatik; .edge.dim soluk, .edge.dashed kesik, .edge.plain okşuz
+ *   <text class="label" x y>kenar etiketi</text>
+ * </svg><figcaption>…</figcaption></figure>
+ * Düğüm <text>'inin x,y'si kutunun merkezi (yatay+dikey ortalanır). Renkler tokenlardan gelir:
+ * aynı SVG açık/koyu temada çalışır. Ok başlarını components.js bir kez ekler (#dg-arrow). */
+.diagram-wrap { margin: var(--s-6) 0; }
+.diagram-wrap figcaption { text-align: center; font-size: var(--text-sm); color: var(--muted); margin-top: var(--s-2); }
+svg.diagram { display: block; width: 100%; height: auto; overflow: visible; }
+svg.diagram .node rect, svg.diagram .node circle, svg.diagram .node ellipse { fill: var(--surface); stroke: var(--ink); stroke-width: 1; }
+svg.diagram .node text, svg.diagram text.label { font-family: var(--font-ui); font-size: 11px; fill: var(--ink); }
+svg.diagram .node text { text-anchor: middle; dominant-baseline: central; }
+svg.diagram text.label { fill: var(--muted); font-size: 10px; }
+svg.diagram .node.visited rect, svg.diagram .node.visited circle, svg.diagram .node.visited ellipse { fill: var(--bg); stroke: var(--muted); }
+svg.diagram .node.visited text { fill: var(--muted); }
+svg.diagram .node.dim { opacity: .45; }
+svg.diagram .node.dim rect, svg.diagram .node.dim circle, svg.diagram .node.dim ellipse { stroke: var(--border); fill: var(--bg); }
+svg.diagram .node.current rect, svg.diagram .node.current circle, svg.diagram .node.current ellipse { fill: var(--surface-2); stroke: var(--ink); stroke-width: 2; }
+svg.diagram .edge { fill: none; stroke: var(--muted); stroke-width: 1; marker-end: url(#dg-arrow); }
+svg.diagram .edge.dim { stroke: var(--border); marker-end: url(#dg-arrow-dim); }
+svg.diagram .edge.dashed { stroke-dasharray: 4 3; }
+svg.diagram .edge.plain { marker-end: none; }
+.dg-arrowhead { fill: var(--muted); }
+.dg-arrowhead.dim { fill: var(--border); }
+
+/* KaTeX (isteğe bağlı, assets/vendor/katex): metin rengine uy */
+.katex { font-size: 1.05em; color: var(--ink); }
+.katex-display { margin: var(--s-4) 0; overflow-x: auto; overflow-y: hidden; }
+
+@media print {
+  html { font-size: 11pt; }
+  body { background: #fff; color: #000; font-size: 11pt; }
+  main { max-width: none; padding: 0; }
+  .controls, .quiz, details.recall, .ask, nav.lesson-nav { display: none; }
+  .sidenote { float: none; width: auto; margin: .4rem 0; }
+  h2 { break-after: avoid; }
+  a { color: #000; }
+}
+@media (max-width: 520px) {
+  body { font-size: 16px; }
+  main { padding-top: var(--s-7); }
+  h1 { font-size: 28px; }
+  h2 { font-size: 22px; }
+  .subtitle { font-size: 18px; }
+  table.payoff th, table.payoff td { padding: var(--s-2); }
+  table.payoff td.cell { min-width: 4.5rem; }
+  .quiz-row > .ui-label { min-width: 100%; }
+}
+
+/* Küçük, soluk açıklama paragrafı (bölüm yönergesi) */
+p.note { color: var(--muted); font-size: var(--text-base); }
+
+/* ── Ders modu (panonun "ders" görünümü) ─────────────────────────────
+ * <header class="lesson-bar">  yapışkan üst çubuk: ← Pano · TEACH · KONU · DERS N · adım çipi · ◐ Tema
+ * <section class="goal">       "Bu dersin sonunda: …" + süre / adım / kontrol sayısı
+ * <div class="lmap-slot">      dersin haritadaki yeri (tools/learn lesson-map çıktısı: <svg class="lmap">)
+ * <section class="step">       bir öğretim adımı: h2 + içerik + tek kontrol (data-card'lı .quiz)
+ * <details class="note">       satır içi açılır not ("NOT" çipi); eski .sidenote'un yerine
+ * .result-bar                  components.js ekler: ilk bağlı soru cevaplanınca alttan çıkar */
+.lesson-bar { position: sticky; top: 0; z-index: 30; background: var(--bg); border-bottom: 1px solid var(--border-soft); }
+.lesson-bar .lb-inner { max-width: 860px; margin: 0 auto; padding: 10px 20px; display: flex; align-items: center; gap: var(--s-2) var(--s-3); }
+.lb-back, .theme-btn { flex: none; font-family: var(--font-ui); font-size: var(--text-xs); font-weight: 500; line-height: 1.4; letter-spacing: var(--tracking-ui); text-transform: uppercase; color: var(--muted); background: transparent; border: 1px solid var(--border); border-radius: 999px; padding: 5px 12px; cursor: pointer; white-space: nowrap; text-decoration: none; }
+.lb-back:hover, .theme-btn:hover { color: var(--ink); border-color: var(--muted); }
+.lb-title { flex: 1 1 auto; min-width: 0; font-family: var(--font-ui); font-size: var(--text-xs); font-weight: 500; letter-spacing: var(--tracking-ui); text-transform: uppercase; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lb-title b { color: var(--ink); font-weight: 600; }
+.lb-title .logo { width: 13px; height: 13px; margin-right: 7px; vertical-align: -2px; color: var(--ink); overflow: visible; }
+.lb-step { flex: 0 1 auto; min-width: 0; max-width: 24rem; font-family: var(--font-ui); font-size: var(--text-xs); font-weight: 500; letter-spacing: var(--tracking-ui); text-transform: uppercase; color: var(--ink); border: 1px solid var(--ink); background: var(--surface); border-radius: 999px; padding: 4px 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lb-step:empty { display: none; }
+.lb-progress { height: 2px; margin-bottom: -1px; }
+.lb-progress i { display: block; height: 100%; width: 0; background: var(--ink); transition: width .12s linear; }
+.lesson-bar + main { padding-top: var(--s-7); }
+
+/* Hedef kartı */
+.goal { border: 1px solid var(--border); border-radius: var(--r-lg); background: var(--surface); padding: var(--s-4) var(--s-5); margin: var(--s-5) 0 var(--s-4); }
+.goal .goal-text { font-family: var(--font-title); font-weight: 700; font-size: var(--text-xl); line-height: 1.4; margin: var(--s-1) 0 0; }
+.goal .goal-meta { margin-top: var(--s-3); }
+.goal-meta { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--s-2) var(--s-6); font-family: var(--font-ui); font-size: var(--text-xs); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.goal-meta b { font-family: var(--font-title); font-size: 19px; letter-spacing: 0; color: var(--ink); font-weight: 700; margin-right: 6px; text-transform: none; }
+.goal-meta a { text-transform: none; letter-spacing: 0; font-size: var(--text-sm); color: var(--ink); }
+
+/* Dersin haritadaki yeri */
+.lmap-slot { border: 1px solid var(--border-soft); border-radius: var(--r-lg); padding: var(--s-3) var(--s-4); margin: 0 0 var(--s-7); overflow-x: auto; }
+.lmap-slot > .ui-label { display: none; } /* başlıksız: harita kendini anlatır */
+svg.lmap { display: block; max-width: 100%; height: auto; margin: 0 auto; }
+.lmap-slot svg.lmap { width: min(100%, 400px); height: auto; }
+/* Geniş ekranda harita sağ boşlukta sabit durur (LH plan kenar notu gibi): okurken hep görünür. */
+@media (min-width: 1280px) {
+  .lmap-slot { position: fixed; top: 76px; right: 24px; width: 236px; z-index: 10; margin: 0; padding: var(--s-2) var(--s-3); background: var(--bg); }
+  .lmap-slot svg.lmap { width: 100%; }
+}
+.lmap-fallback { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2); font-family: var(--font-ui); font-size: var(--text-sm); }
+.lmap-fallback .lmap-node { border: 1px solid var(--border); border-radius: var(--r-sm); background: var(--surface); padding: 3px 10px; color: var(--ink); }
+.lmap-fallback .lmap-node.current { border-color: var(--ink); }
+.lmap-fallback .lmap-arrow { color: var(--muted); }
+
+/* Adımlar ve adım sonu kontrolü */
+section.step { scroll-margin-top: 72px; }
+section.step > .step-kicker { margin: var(--s-8) 0 var(--s-1); }
+section.step > .step-kicker + h2 { margin-top: 0; }
+section.step .step-kicker b { color: var(--ink); font-weight: 600; }
+.quiz.check { margin-top: var(--s-7); }
+
+/* Satır içi açılır not */
+details.note { margin: var(--s-3) 0 var(--s-5); font-size: var(--text-base); line-height: 1.55; color: var(--muted); }
+details.note > summary { display: inline-flex; align-items: baseline; gap: var(--s-2); cursor: pointer; list-style: none; color: var(--muted); }
+details.note > summary::-webkit-details-marker { display: none; }
+details.note > summary::before { content: "Not"; flex: none; font-family: var(--font-ui); font-size: 10px; font-weight: 500; letter-spacing: var(--tracking-ui); text-transform: uppercase; border: 1px solid var(--border); border-radius: 999px; padding: 0 8px; line-height: 18px; }
+details.note > summary::after { content: "+"; font-family: var(--font-ui); font-size: var(--text-sm); }
+details.note[open] > summary::after { content: "−"; }
+details.note > summary:hover, details.note[open] > summary { color: var(--ink); }
+details.note > :not(summary) { margin: var(--s-2) 0 0; padding-left: var(--s-3); border-left: 1px solid var(--border); }
+
+/* Yapışkan sonuç çubuğu (components.js) */
+.result-bar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 30; background: var(--bg); border-top: 1px solid var(--ink); box-shadow: 0 -10px 24px -16px rgba(0, 0, 0, .35); transform: translateY(110%); transition: transform .2s ease-out; }
+.result-bar.show { transform: none; }
+.result-bar .rb-inner { max-width: 860px; margin: 0 auto; padding: 10px 20px; display: flex; align-items: center; gap: var(--s-2) var(--s-3); }
+.result-bar .rb-count { flex: none; font-family: var(--font-ui); font-size: var(--text-xs); font-weight: 500; letter-spacing: var(--tracking-ui); text-transform: uppercase; color: var(--muted); white-space: nowrap; }
+.result-bar .rb-count b { color: var(--ink); font-weight: 600; }
+.result-bar code { flex: 1 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: var(--text-sm); background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-sm); padding: 6px var(--s-3); user-select: all; }
+.result-bar .btn { flex: none; }
+body.has-result-bar main { padding-bottom: 9rem; }
+
+/* Panoya gömülü ders (components.js <html class="embed"> ekler): pano zaten konu/ders/temayı gösterir */
+.embed .lb-back, .embed .lb-title, .embed .lesson-bar .theme-btn { display: none; }
+.embed .lesson-bar .lb-inner { max-width: var(--measure); padding: 8px var(--s-4); }
+.embed .lb-step { max-width: none; }
+.embed .lesson-bar + main { padding-top: var(--s-6); }
+.embed main > .kicker, .embed .lmap-slot { display: none; } /* panoda: ders sekmesi ve Harita bunları zaten gösterir */
+.goal-meta:empty { display: none; }
+
+@media (max-width: 640px) {
+  .lesson-bar .lb-inner { flex-wrap: wrap; padding: 8px 16px; }
+  .lb-title { order: -1; flex-basis: 100%; }
+  .lb-step { flex: 1 1 auto; max-width: none; }
+  .result-bar .rb-inner { flex-wrap: wrap; padding: 8px 16px; }
+  .result-bar .rb-count { flex: 1 1 auto; }
+  .result-bar code { order: 3; flex-basis: 100%; }
+}
+@media print {
+  .lesson-bar, .result-bar, .lmap-slot { display: none; }
+  details.note > :not(summary) { display: block; }
+}

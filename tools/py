@@ -1,0 +1,12 @@
+#!/bin/sh
+# Runs Python whichever way is available: uv-managed first, then a system Python.
+# Works on macOS/Linux and on Windows (Claude Code runs Bash through Git Bash there).
+for uv in uv "$HOME/.local/bin/uv" "$HOME/.local/bin/uv.exe" "$HOME/.cargo/bin/uv"; do
+  if command -v "$uv" >/dev/null 2>&1; then exec "$uv" run --no-project --quiet python "$@"; fi
+done
+# On Windows, `python3` is often a Microsoft Store stub: check that each candidate really runs.
+for py in python3 python "py -3"; do
+  if $py -c "import sys; sys.exit(0 if sys.version_info >= (3, 9) else 1)" >/dev/null 2>&1; then exec $py "$@"; fi
+done
+echo "Python bulunamadı / Python not found. Claude'a 'kurulum yapalım' yaz." >&2
+exit 127

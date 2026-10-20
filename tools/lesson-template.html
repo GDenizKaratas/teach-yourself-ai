@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{Ders başlığı}}</title>
+<!-- Lessons live in tracks/<track>/lessons/, three levels below the repo root. -->
+<link rel="stylesheet" href="../../../assets/style.css">
+<script src="../../../assets/components.js"></script>
+<!-- Matematik gerekiyorsa (isteğe bağlı, çevrimdışı): bu üç satırı bırak; gerekmiyorsa sil.
+     Yazım: satır içi \( a^2 + b^2 \), ayrı satır \[ … \] ya da $$ … $$. KaTeX yoksa metin okunur kalır. -->
+<link rel="stylesheet" href="../../../assets/vendor/katex/katex.min.css">
+<script defer src="../../../assets/vendor/katex/katex.min.js"></script>
+<script defer src="../../../assets/vendor/katex/contrib/auto-render.min.js"></script>
+</head>
+<body>
+<!-- 1. Üst çubuk (panoyla aynı dil). Konu başlığı = track README'nin başlığı; "← Pano" panoya döner.
+     .lb-step çipini ve .lb-progress çizgisini components.js doldurur; ◐ Tema panoyla aynı tercihi kullanır. -->
+<header class="lesson-bar">
+  <div class="lb-inner">
+    <a class="lb-back" href="../../../learner/dashboard.html">← Pano</a>
+    <span class="lb-title">teach · {{Konu başlığı}} · <b>Ders {{N}}</b></span>
+    <span class="lb-step" aria-live="polite"></span>
+    <button class="theme-btn" type="button">◐ Tema</button>
+  </div>
+  <div class="lb-progress" aria-hidden="true"><i></i></div>
+</header>
+<main data-lesson="{{NNNN}}">
+
+<p class="kicker">Ders {{N}} · {{node 1}}, {{node 2}}</p>
+<h1>{{Ders başlığı}}</h1>
+<p class="subtitle">{{Dersin cevapladığı soru, tek cümle.}}</p>
+
+<!-- 2. Hedef kartı: TEK gözlemlenebilir sonuç, "…-abileceksin" diye biter; süre ve başvuru bağlantıları. Adım /
+     kontrol sayısı yazma: çip ilerlemeyi zaten gösterir. Panoda Başvuru bağlantıları gizlenir (notlar sütununda var). -->
+<section class="goal" aria-label="Dersin hedefi">
+  <div class="ui-label">Bu dersin sonunda</div>
+  <p class="goal-text">{{gözlemlenebilir tek şey: "… bulabileceksin."}}</p>
+  <div class="goal-meta">
+    <span><b>~15</b>dk</span>
+    <span>Başvuru: <a href="../reference/{{sozluk}}.html">Sözlük</a></span>
+  </div>
+</section>
+
+<!-- 3. Dersin haritadaki yeri. Yalnızca yorumu ve boş SVG'yi yaz: `tools/learn refresh` SVG'yi yorumdaki
+     argümanlardan doldurur ve güncel tutar; elle düzenleme. Dersin düğümleri kalın siyah çerçeveli; sarı yalnızca
+     konunun gerçek sıradaki düğümü. Dolana kadar components.js düğümleri sade çiplerle gösterir. -->
+<!-- lesson-map: --track {{track}} --nodes {{node-1}},{{node-2}} -->
+<div class="lmap-slot" data-track="{{track}}" data-nodes="{{node-1}},{{node-2}}"><svg class="lmap"></svg></div>
+
+<!-- 4. Her öğretim adımı bir <section class="step">: h2 + içerik + EN SONDA tek kontrol.
+     Kontrol = data-card'lı bir quiz, class="quiz check" data-label="Kontrol" (cards --html iskeleti).
+     "ADIM i" etiketini ve üst çubuktaki çipi JS yazar; data-title çipte görünen kısa ad (yoksa h2). -->
+
+<!-- Isınma (2. dersten itibaren): önceki bir düğümün kartından 1 soru. -->
+<section class="step" data-title="Isınma">
+<h2>Isınma: geçen dersi hatırla</h2>
+<p class="note">Önceki derse bakmadan. Hatırlamaya çalışmak, sonra kontrol etmek öğrenmeyi kalıcı yapan şey.</p>
+{{quiz: data-card, data-label="Isınma"}}
+</section>
+
+<!-- Motivasyon: neden buradayız, hangi problem bizi buraya getiriyor. Vaka, hikâye, bozulan örnek. Her olgu atıflı.
+     Öğretmeyen (yalnızca motive eden) adımın sonunda kontrol olmayabilir. -->
+<section class="step" data-title="{{Kısa ad}}">
+<h2>{{Hikâye / problem}}</h2>
+<p>…<span class="cite"><a href="#r1">1</a></span></p>
+</section>
+
+<!-- Koşulsuz gerçek + türetilen adım. Adım başına tek fikir. Önceki düğüme bağ açık.
+     Formül gerekiyorsa KaTeX: \( u_1(s_1, s_2) \ge u_1(s_1', s_2) \).
+     Yan bilgi (kenar notu) satır içi açılır nottur: <details class="note"><summary>Kısa başlık</summary><p>…</p></details>
+     ("NOT" çipi CSS'ten gelir). Yüzen .sidenote kullanma. -->
+<section class="step" data-title="{{Kısa ad}}">
+<h2>{{Temel gerçek}}</h2>
+<p>…</p>
+<details class="note">
+  <summary>{{Notun kısa başlığı}}</summary>
+  <p>{{Ana akışı bölmeyen yan bilgi.}}</p>
+</details>
+<div class="callout key">
+  <span class="label">Kural</span>
+  {{Koşulsuz, kayıtsız şartsız tek cümle.}}
+</div>
+
+<!-- Diyagram (isteğe bağlı): fikirlerin/düğümlerin bağı. Kurallar style.css "Diyagram" başlığında.
+     .node.visited = geçilmiş (soluk), .node.current = bu ders (kalın siyah çerçeve), .node.dim = sonra gelecek.
+     <text> x,y = kutunun merkezi. Ok başları otomatik. -->
+<figure class="diagram-wrap">
+  <svg class="diagram" viewBox="0 0 560 170" role="img" aria-label="{{Diyagramın tek cümlelik özeti}}">
+    <path class="edge" d="M150,40 C200,40 200,85 238,85"/>
+    <path class="edge" d="M150,130 C200,130 200,85 238,85"/>
+    <path class="edge dim dashed" d="M382,85 L418,85"/>
+    <g class="node visited"><rect x="10" y="22" width="140" height="36" rx="3"/><text x="80" y="40">{{önceki düğüm 1}}</text></g>
+    <g class="node visited"><rect x="10" y="112" width="140" height="36" rx="3"/><text x="80" y="130">{{önceki düğüm 2}}</text></g>
+    <g class="node current"><rect x="240" y="67" width="140" height="36" rx="3"/><text x="310" y="85">{{bu dersin düğümü}}</text></g>
+    <g class="node dim"><rect x="420" y="67" width="130" height="36" rx="3"/><text x="485" y="85">{{sonraki}}</text></g>
+  </svg>
+  <figcaption>{{Diyagram neyi gösteriyor?}}</figcaption>
+</figure>
+
+<!-- Adım sonu kontrolü: bu adımın fikrini yoklayan TEK kart (`tools/learn cards --track t --node n --html`). -->
+<div class="quiz check" data-card="{{xx-001}}" data-answer="1" data-label="Kontrol">
+  <p class="q">{{Soru metni?}}</p>
+  <div class="opts">
+    <button class="opt" data-why="{{çeldirici: arkasındaki inanç ve neden çöktüğü}}">{{Şık A}}</button>
+    <button class="opt" data-why="{{doğru: explanation'dan tek satır}}">{{Şık B}}</button>
+    <button class="opt" data-why="{{çeldirici: …}}">{{Şık C}}</button>
+  </div>
+  <div class="feedback"></div>
+</div>
+</section>
+
+<!-- Dene: bileşen. Cevap gösterilmeden önce öğrenci hamle yapar. Etkileşimli alıştırma (matris, tablo)
+     data-card taşımaz ve kayda geçmez; adımın kontrolü yine bir kart olur. -->
+<section class="step" data-title="Dene">
+<h2>Dene</h2>
+<p><b>Önce kendin dene</b>, sonra kontrol et.</p>
+<div class="truth-table" data-tt='{
+  "vars": ["P", "Q"],
+  "given": ["P ⇒ Q"],
+  "cols": ["¬Q", "¬P", "¬Q ⇒ ¬P"],
+  "caption": "{{Ne bekleniyor?}}"
+}'></div>
+<!-- ya da: <div class="payoff-game" data-game='{…, "mode": "nash"}'></div> -->
+{{quiz check: data-card, data-label="Kontrol"}}
+</section>
+
+<!-- Model değişirse: tek bir ayrıntı değişince sonuç değişir mi? -->
+<section class="step" data-title="Model değişirse">
+<h2>Bir dakika: {{varyant}}</h2>
+<p>…</p>
+<details class="recall">
+  <summary>Çözdükten sonra aç: bu neyi gösteriyor?</summary>
+  <p>…</p>
+</details>
+{{quiz check: data-card, data-label="Kontrol"}}
+</section>
+
+<!-- Hedefe aktarım + mini görev (sohbete getirilir; `task` olur). -->
+<section class="step" data-title="Hayata aktar">
+<h2>Hayata aktar</h2>
+<p>{{Öğrencinin hedefinde bu fikrin tam olarak nerede göründüğü.}}</p>
+<div class="callout">
+  <span class="label">Mini görev</span>
+  {{Sayfa dışında yapılacak küçük iş; "bana yaz" ile biter.}}
+</div>
+</section>
+
+<!-- Geri çağırma: yalnızca 1–2 öğe (asıl kontroller adımların sonunda). Kart quiz'i ya da `cards --html`'in
+     verdiği data-card'lı <details class="recall">. Her data-card'lı quiz'e components.js Bilmiyorum satırı,
+     eminlik (Tahmin / Emin değilim / Eminim), "Neden?" alanı ve Cevapla düğmesi ekler. İlk cevaptan sonra
+     altta yapışkan sonuç çubuğu çıkar ("2/4 cevaplandı · Kopyala → sohbete yapıştır"); hepsi bitince
+     aynı satır aşağıdaki .score içinde de görünür. -->
+<section class="step" data-title="Geri çağırma">
+<h2>Geri çağırma</h2>
+<p class="note">Yukarı bakmadan cevapla. Zorlanman iyi işaret. Bitince çıkan satırı kopyalayıp sohbete yapıştır.</p>
+{{1–2 öğe: quiz (data-card, data-label="Geri çağırma") ya da details.recall[data-card]}}
+<div class="score"></div>
+
+<details class="recall">
+  <summary>Yarın için (aralıklı tekrar)</summary>
+  <p>{{Sayfayı açmadan kâğıda yazılacak 2–3 şey.}}</p>
+</details>
+</section>
+
+<div class="source">
+  <span class="label">Birincil kaynak</span>
+  <a href="{{url}}">{{Yazar, başlık}}</a> ({{ne kadar sürer, hangi bölüm}}). {{Neden bu kaynak.}}
+</div>
+
+<div class="ask">
+  Takıldığın, itiraz ettiğin ya da “peki ya şu olsaydı?” dediğin bir yer varsa bana sor — öğretmenin benim.
+</div>
+
+<h3>Kaynaklar</h3>
+<ol class="refs">
+  <li id="r1"><a href="{{url}}">{{Başlık}}</a> — {{yayın}}.</li>
+</ol>
+
+<nav class="lesson-nav">
+  <a href="{{prev}}.html">← Ders {{N-1}}: {{başlık}}</a>
+  <span class="disabled">Ders {{N+1}}: {{başlık}} (yakında) →</span>
+</nav>
+
+</main>
+</body>
+</html>

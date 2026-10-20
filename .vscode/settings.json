@@ -1,0 +1,14 @@
+{
+  "files.exclude": {
+    "**/cards.jsonl": true,
+    "**/attempts.jsonl": true,
+    "**/__pycache__": true,
+    "**/.pytest_cache": true,
+    ".venv": true,
+    "tools": true,
+    ".claude": true,
+    "learner/state.json": true,
+    "learner/moments.jsonl": true,
+    "uv.lock": true
+  }
+}

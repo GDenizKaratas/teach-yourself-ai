@@ -1,0 +1,16 @@
+#!/bin/sh
+# Environment check for the learner's machine. Prints one line per item.
+cd "$(dirname "$0")/.." || exit 1
+ok() { printf '  ✓ %s\n' "$1"; }
+no() { printf '  ✗ %s → %s\n' "$1" "$2"; }
+echo "Environment check"
+UV=""
+if command -v uv >/dev/null 2>&1; then UV=uv; elif [ -x "$HOME/.local/bin/uv" ]; then UV="$HOME/.local/bin/uv"; fi
+if [ -n "$UV" ]; then ok "uv $($UV --version 2>/dev/null | cut -d' ' -f2)"; else no "uv" "not installed (setup skill, step 1)"; fi
+if [ -d .venv ]; then ok ".venv exists"; else no ".venv" "run: uv sync"; fi
+if [ -n "$UV" ] && [ -d .venv ]; then
+  ok "python $($UV run --quiet python -c 'import platform; print(platform.python_version())' 2>/dev/null)"
+  if $UV run --quiet python -c "import pytest" 2>/dev/null; then ok "pytest"; else no "pytest" "run: uv sync"; fi
+fi
+groups=$(sed -n '/^\[dependency-groups\]/,/^\[/p' pyproject.toml | sed -n 's/^\([A-Za-z0-9_-]*\) *= *\[.*/\1/p')
+for g in $groups; do printf '  · track group "%s" declared (install when needed: uv sync --group %s)\n' "$g" "$g"; done

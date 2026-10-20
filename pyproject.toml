@@ -1,0 +1,12 @@
+[project]
+name = "teach-anything-workspace"
+version = "0.1.0"
+description = "Learner environment: packages the tracks need. Groups are installed only when a track reaches them."
+requires-python = ">=3.11"
+dependencies = ["pytest>=8"]
+
+# Track-specific packages are added as dependency groups when a track needs them:
+#   uv add --group <track> <package>   then   uv sync --group <track>
+
+[tool.uv]
+package = false

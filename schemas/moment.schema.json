@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "teach/moment.schema.json",
+  "title": "Moment: one line of learner/moments.jsonl",
+  "description": "Engagement log (recap, teaser, milestone, …), append-only, written only by `tools/learn moment`.",
+  "type": "object",
+  "required": ["ts", "kind"],
+  "properties": {
+    "ts": {"type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}"},
+    "kind": {"enum": ["recap", "cheatsheet", "teaser", "value", "milestone", "lesson"]},
+    "note": {"type": ["string", "null"]},
+    "checked_nodes": {"type": "integer", "minimum": 0}
+  }
+}
