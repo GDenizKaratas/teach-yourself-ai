@@ -4,12 +4,16 @@
 
 <p align="center">Claude Code içinde çalışan kişisel öğretmen.<br>Ne öğrenmek istediğini söylersin; sana özel bir yol çizer ve adım adım öğretir.</p>
 
+<p align="center"><img src="docs/img/pano.png" alt="Pano: bütün konuların kavram ağı, ne kadarının taze kaldığı, çalışma takvimi ve son çalışmalar"></p>
+
 ## Nasıl çalışır
 
 - **Önce hedefini sorar.** Birkaç soruyla asıl amacını bulur ve sana uygun dersi önerir.
 - **Ezberletmez, anlatır.** Temelden başlar, her seferinde tek adım ilerler ve sık sık soru sorar. Cevaplarından seni tanır.
 - **Unutturmaz.** Tekrar zamanı gelen konuları kısa ısınmalarla geri getirir.
 - **İlerlemeni gösterir.** Haritan, notların ve derslerin tek bir panoda durur.
+
+<p align="center"><img src="docs/img/harita.png" alt="Bir konunun haritası: temelden hedefe adımlar, sıradaki adım sarı, yanında notlar ve dokümanlar"></p>
 
 ## Kurulum
 

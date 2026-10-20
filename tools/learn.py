@@ -2348,6 +2348,9 @@ def track_hues(tracks: list[dict]) -> dict:
     return {t["id"]: TRACK_HUES[i % len(TRACK_HUES)] for i, t in enumerate(tracks)}
 
 
+GRAPH_BASE_NODES = 30  # up to this many nodes the concept network uses the base 760×460 canvas
+
+
 def render_graph_svg(tracks: list[dict], tab: dict | None = None, hue: dict | None = None) -> tuple[str, str]:
     """(svg, legend html) for the concept network of all tracks. `tab` maps track id -> dashboard tab key; clouds,
     cloud labels, legend items and nodes carry data-go (and nodes data-node) so a click opens that track's tab."""
@@ -2373,7 +2376,12 @@ def render_graph_svg(tracks: list[dict], tab: dict | None = None, hue: dict | No
             if groups[a] != groups[b] and (a[1] == b[1] or (stmt[a] and " ".join(stmt[a].lower().split())
                                                               == " ".join((stmt[b] or "").lower().split()))):
                 cross.append((a, b))
-    W, H = 760.0, 460.0
+    # the canvas grows with √(node count) past GRAPH_BASE_NODES, so spacing (and room for labels) stays constant; the
+    # dashboard first shows all of it (labels smaller), and the reader zooms / pans inside the box (DASH_JS). Zooming by
+    # k, each node and track title is scaled by k^-0.6 around its own point (CSS --ks), so it grows on screen only as
+    # k^0.4 while the space between nodes grows as k: crowded areas open up instead of just getting bigger
+    grow = max(1.0, math.sqrt(len(keys) / GRAPH_BASE_NODES))
+    W, H = round(760.0 * grow), round(460.0 * grow)
     raw = force_layout(keys, groups, edges + cross, W, H)
     if raw:
         xs, ys = [p[0] for p in raw.values()], [p[1] for p in raw.values()]
@@ -2421,7 +2429,8 @@ def render_graph_svg(tracks: list[dict], tab: dict | None = None, hue: dict | No
         lx = min(W - half, max(half, mx))
         placed.append((lx - half, ly - 10, lx + half, ly + 11 * (len(lines) - 1) + 3))
         spans = "".join(f'<tspan x="{fmt(round(lx, 1))}" dy="{0 if i == 0 else 11}">{esc(s)}</tspan>' for i, s in enumerate(lines))
-        title_parts.append(f'<text class="kg-label" data-go="{esc(tab[t["id"]])}" x="{fmt(round(lx, 1))}" y="{fmt(round(ly, 1))}">'
+        title_parts.append(f'<text class="kg-label" data-go="{esc(tab[t["id"]])}" x="{fmt(round(lx, 1))}" y="{fmt(round(ly, 1))}" '
+                           f'style="transform-origin:{fmt(round(lx, 1))}px {fmt(round(ly, 1))}px">'
                            f'{spans}<title>{esc(t["title"])}</title></text>')
     rank = {"learning": 1, "struggling": 1, "checked": 1, "retained": 2, "owned": 2, "durable": 2}
     order = sorted(keys, key=lambda k: (0 if k in nxt else rank.get(level[k], 3), keys.index(k)))
@@ -2457,7 +2466,8 @@ def render_graph_svg(tracks: list[dict], tab: dict | None = None, hue: dict | No
         if k in text_at:
             anchor, tx, ty = text_at[k]
             txt = f'<text x="{fmt(tx)}" y="{fmt(ty)}"{"" if anchor == "middle" else f" style={chr(34)}text-anchor:{anchor}{chr(34)}"}>{esc(label[k])}</text>'
-        parts.append(f'<g class="kg-n{state}" data-doc="{esc(_doc_id(tab[k[0]], "node-" + k[1]))}" data-node="{esc(k[1])}"><title>{esc(tip)}</title>'
+        parts.append(f'<g class="kg-n{state}" style="transform-origin:{fmt(x)}px {fmt(y)}px" '
+                     f'data-doc="{esc(_doc_id(tab[k[0]], "node-" + k[1]))}" data-node="{esc(k[1])}"><title>{esc(tip)}</title>'
                      f'<circle cx="{fmt(x)}" cy="{fmt(y)}" r="{fmt(r)}"{fill}/>{txt}</g>')
     parts += title_parts
     parts.append("</svg>")
@@ -2703,12 +2713,19 @@ html:not(.js) .panel + .panel { margin-top: 40px; border-top: 1px solid var(--bo
 .cal-days { display: grid; grid-template-columns: repeat(7, 13px); gap: 4px; margin-bottom: 6px; font-family: var(--font-ui); font-size: 11px; color: var(--muted); text-align: center; }
 .cal-h { margin: 0 0 10px; font-size: 16px; font-weight: 700; }
 .cal-h .wk { font-weight: 400; color: var(--muted); }
-.kg-wrap { position: relative; border: 1px solid var(--border-soft); border-radius: var(--r-lg); overflow-x: auto; overflow-y: hidden; }
+.kg-wrap { position: relative; border: 1px solid var(--border-soft); border-radius: var(--r-lg); overflow: hidden; }
 .kg-wrap svg.graph { max-height: calc(100vh - 170px); max-height: calc(100dvh - 170px); }
-svg.graph { display: block; width: 100%; min-width: 560px; height: auto; font-family: var(--font-prose); }
+.js .kg-wrap svg.graph { cursor: grab; touch-action: none; -webkit-user-select: none; user-select: none; }
+.js .kg-wrap.drag svg.graph, .js .kg-wrap.drag svg.graph * { cursor: grabbing; }
+.kg-zoom { position: absolute; right: 10px; bottom: 10px; display: flex; flex-direction: column; gap: 4px; }
+html:not(.js) .kg-zoom { display: none; }
+.kg-zoom button { width: 30px; height: 30px; padding: 0; border: 1px solid var(--border-soft); border-radius: var(--r-md); background: var(--bg); color: var(--ink); font: 16px/1 var(--font-ui); cursor: pointer; }
+.kg-zoom button:hover { background: var(--surface); }
+svg.graph { display: block; width: 100%; height: auto; font-family: var(--font-prose); }
 svg.graph .canvas { fill: var(--bg); }
 svg.graph .kg-cloud, svg.graph .kg-n, svg.graph .kg-label { cursor: pointer; }
-svg.graph .kg-e { stroke: var(--muted); stroke-opacity: .5; stroke-width: .8; }
+svg.graph .kg-e { stroke: var(--muted); stroke-opacity: .5; stroke-width: .8; vector-effect: non-scaling-stroke; }
+.js svg.graph .kg-n, .js svg.graph .kg-label { transform-box: view-box; transform: scale(var(--ks, 1)); }
 svg.graph .kg-e.cross { stroke: var(--ink); stroke-dasharray: 5 4; stroke-width: 1.2; stroke-opacity: .75; }
 svg.graph .kg-n circle { fill: var(--ink); }
 svg.graph .kg-n.learn circle { opacity: .8; }
@@ -2722,8 +2739,9 @@ svg.graph .kg-n.next text { fill: var(--ink); font-weight: 600; }
 svg.graph .kg-n:hover text { fill: var(--ink); }
 svg.graph .kg-label { font-family: var(--font-ui); font-size: 10px; letter-spacing: .08em; text-transform: uppercase; text-anchor: middle; fill: var(--ink); }
 svg.graph .kg-label:hover { text-decoration: underline; }
-.kg-legend { position: absolute; top: 10px; right: 14px; display: flex; gap: 6px 18px; }
-.kg-key { display: inline-flex; align-items: center; gap: 7px; font-family: var(--font-ui); font-size: 12px; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); background: none; border: 0; padding: 2px 0; }
+.kg-h { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.kg-legend { display: flex; gap: 6px 18px; }
+.kg-key { display: inline-flex; align-items: center; gap: 7px; font-family: var(--font-ui); font-size: 12px; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); background: none; border: 0; padding: 0; }
 .kg-key i.dot-next { width: 9px; height: 9px; border-radius: 50%; display: inline-block; background: var(--current); box-shadow: 0 0 6px var(--current-glow); }
 footer { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px 20px; margin-top: 24px; padding-top: 12px; border-top: 1px solid var(--border-soft); color: var(--muted); font-family: var(--font-ui); font-size: 12px; }
 /* track: lesson tabs, then the reading area + notes column */
@@ -2803,6 +2821,9 @@ svg.plan .node.flash .box { animation: flash 2.2s ease-out; }
 .dlist.on, html:not(.js) .dlist { display: block; }
 .doc { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 50px; text-align: left; text-decoration: none; color: var(--ink); background: transparent; border: 0; border-bottom: 1px solid var(--border-soft); border-radius: 0; padding: 8px; cursor: pointer; }
 .doc .t { flex: 1 1 auto; min-width: 0; font-size: 15px; font-weight: 600; line-height: 1.3; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; }
+.doc .di { flex: none; width: 20px; height: 20px; color: var(--muted); }
+.doc:hover .di { color: var(--ink); }
+.dgrp ul .doc .di { width: 18px; height: 18px; }
 .doc .k { flex: none; font-family: var(--font-ui); font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
 .ext-doc .k::after { content: " ↗"; }
 .doc:hover { background: var(--surface); }
@@ -2859,7 +2880,7 @@ svg.plan .node.flash .box { animation: flash 2.2s ease-out; }
   .kpi .num { font-size: 30px; }
   .kpi.prog { flex: 1 1 auto; width: auto; }
   .lrow { padding: 8px 12px; }
-  .tab { padding: 0 12px; max-width: 130px; }
+  .tab { gap: 6px; padding: 0 11px; max-width: 160px; font-size: 12px; letter-spacing: .02em; }
   .tab .tl { overflow: hidden; text-overflow: ellipsis; }
   .lt-tools .ext { display: none !important; }
   .lrow .kpis { flex-wrap: nowrap; gap: 12px; }
@@ -2973,6 +2994,25 @@ if(!hit&&fr&&abs(fr.getAttribute("data-src"))===u)hit=b;});
 if(hit){route(hit.closest(".ltabs").getAttribute("data-track")+"/"+hit.getAttribute("data-view"),{save:1});return;}
 var t=$$("template[data-src]").filter(function(x){return abs(x.getAttribute("data-src"))===u;})[0];
 if(t){openDoc(t.id.slice(4));return;}if(/^(file|https?):/.test(m.href))f.setAttribute("src",m.href);});
+$$(".kg-wrap").forEach(function(w){var s=$("svg.graph",w);if(!s)return;
+var b0=s.getAttribute("viewBox").split(" ").map(Number),BW=b0[2],BH=b0[3],v=b0.slice(),KZ="teach-kg:"+b0.join(","),p=null,moved=false;
+function set(n,save){var z=Math.min(1,Math.max(1/8,n[2]/BW)),vw=BW*z,vh=BH*z;
+v=[Math.min(BW-vw,Math.max(0,n[0])),Math.min(BH-vh,Math.max(0,n[1])),vw,vh];
+s.setAttribute("viewBox",v.map(function(x){return Math.round(x*10)/10;}).join(" "));s.style.setProperty("--ks",Math.pow(v[2]/BW,.6).toFixed(3));
+if(save){try{sessionStorage.setItem(KZ,JSON.stringify(v));}catch(e){}}}
+function at(e){var m=s.getScreenCTM();if(!m)return null;var q=s.createSVGPoint();q.x=e.clientX;q.y=e.clientY;return q.matrixTransform(m.inverse());}
+function zoom(f,c){var r=Math.min(BW,Math.max(BW/8,v[2]*f))/v[2];set([c.x-(c.x-v[0])*r,c.y-(c.y-v[1])*r,v[2]*r,v[3]*r],1);}
+try{var sv=JSON.parse(sessionStorage.getItem(KZ)||"null");if(sv&&sv.length===4)set(sv);}catch(e){}
+s.addEventListener("wheel",function(e){e.preventDefault();var c=at(e);if(c)zoom(Math.pow(1.0015,e.deltaY*(e.deltaMode===1?33:1)),c);},{passive:false});
+s.addEventListener("pointerdown",function(e){if(e.button!==0)return;p={x:e.clientX,y:e.clientY,v:v.slice(),id:e.pointerId};moved=false;});
+s.addEventListener("pointermove",function(e){if(!p||e.pointerId!==p.id)return;var dx=e.clientX-p.x,dy=e.clientY-p.y;
+if(!moved){if(dx*dx+dy*dy<25)return;moved=true;w.classList.add("drag");try{s.setPointerCapture(e.pointerId);}catch(_){}}
+var m=s.getScreenCTM();if(m)set([p.v[0]-dx/m.a,p.v[1]-dy/m.d,p.v[2],p.v[3]]);});
+function end(){if(!p)return;p=null;w.classList.remove("drag");if(moved)set(v,1);}
+s.addEventListener("pointerup",end);s.addEventListener("pointercancel",end);
+w.addEventListener("click",function(e){if(moved){moved=false;e.preventDefault();e.stopPropagation();}},true);
+$$(".kg-zoom button",w).forEach(function(bt){bt.addEventListener("click",function(){var z=bt.getAttribute("data-z");
+if(z==="fit")set(b0,1);else zoom(z==="in"?1/1.5:1.5,{x:v[0]+v[2]/2,y:v[1]+v[3]/2});});});});
 try{var q=new URLSearchParams(location.search).get("panel");if(q)openDoc(q);}catch(e){}
 var away=false,last=Date.now(),dirty=[];
 function back(){if(!away||(d.visibilityState&&d.visibilityState!=="visible"))return;away=false;
@@ -3199,8 +3239,13 @@ def render_overview(data: dict, tracks: list[dict], tab: dict) -> str:
         side.append('<div class="blk"><p class="warn">Bazı kayıt satırları okunamadı. Claude\'a söyle; o düzeltir.</p></div>')
     if any(t["map"]["nodes"] for t in tracks):
         svg, kg_legend = render_graph_svg([t for t in tracks if t["map"]["nodes"]], tab, track_hues(tracks))
-        main = (f'<div class="blk" id="ag"><h2 class="bh">Kavram ağı</h2><div class="kg-wrap">{svg}'
-                + (f'<div class="kg-legend">{kg_legend}</div>' if kg_legend else "") + "</div></div>")
+        zoom = ('<div class="kg-zoom"><button type="button" data-z="in" aria-label="Yakınlaştır" title="Yakınlaştır">+</button>'
+                '<button type="button" data-z="out" aria-label="Uzaklaştır" title="Uzaklaştır">−</button>'
+                '<button type="button" data-z="fit" aria-label="Tümünü göster" title="Tümünü göster">⤢</button></div>')
+        # the legend sits in the header line, outside the canvas, so it never covers nodes while panning / zooming
+        main = (f'<div class="blk" id="ag"><h2 class="bh kg-h">Kavram ağı'
+                + (f'<span class="kg-legend">{kg_legend}</span>' if kg_legend else "")
+                + f'</h2><div class="kg-wrap">{svg}{zoom}</div></div>')
     else:
         main = ""
     return f'<div class="gen-grid"><div class="main">{main}</div><div class="side">{"".join(side)}</div></div>'
@@ -3248,6 +3293,27 @@ def lesson_context(les: dict, docs: list[dict]) -> list[dict]:
 
 GROUP_TR = {"Görev": "Görevler", "Referans": "Referans sayfaları", "Kaynak": "Kaynaklar"}
 
+# One line icon per document kind (24×24, stroke = currentColor), so a kind is recognisable before its tag is read.
+_LINK_ICON = ('<path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/>'
+              '<path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/>')
+DOC_ICON = {
+    "Özet": '<rect x="5" y="3.5" width="14" height="17" rx="2"/><path d="M9 8.5h6M9 12h6M9 15.5h3.5"/>',
+    "Sözlük": '<path d="M5 18.5V5a2 2 0 0 1 2-2h12v14H7a2 2 0 0 0-2 2 2 2 0 0 0 2 2h12"/><path d="M9.5 11l2-5 2 5M10.2 9.4h2.6"/>',
+    "Kaynaklar": _LINK_ICON,
+    "Kaynak": _LINK_ICON,
+    "Harita": '<circle cx="6" cy="6" r="2.2"/><circle cx="18" cy="9" r="2.2"/><circle cx="9" cy="18" r="2.2"/>'
+              '<path d="M8.1 6.6l7.8 1.8M6.8 8.1l1.5 7.8M16.5 10.8l-6 5.6"/>',
+    "Referans": '<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 16.5h6"/>',
+    "Görev": '<rect x="4" y="4" width="16" height="16" rx="3"/><path d="M8.5 12.5l2.5 2.5 4.5-5"/>',
+}
+
+
+def doc_icon(kind: str) -> str:
+    """The kind's line icon (decorative: the kind tag carries the meaning); unknown kind → nothing."""
+    paths = DOC_ICON.get(kind)
+    return (f'<svg class="di" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" '
+            f'stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">{paths}</svg>') if paths else ""
+
 
 def doc_list(items: list[dict], ctx: str, on: bool) -> str:
     """One context's list in the notes column: one line per item, title + type tag. Two or more items of the same
@@ -3255,7 +3321,7 @@ def doc_list(items: list[dict], ctx: str, on: bool) -> str:
     if not items:
         return ""
     def row(d):
-        body = f'<span class="t">{esc(d["title"])}</span><span class="k">{esc(d["kind"])}</span>'
+        body = f'{doc_icon(d["kind"])}<span class="t">{esc(d["title"])}</span><span class="k">{esc(d["kind"])}</span>'
         if "href" in d:
             return (f'<li><a class="doc ext-doc" href="{esc(d["href"])}" target="_blank" rel="noopener" '
                     f'title="{esc(d["title"])} (yeni sekmede)">{body}</a></li>')
@@ -3268,7 +3334,7 @@ def doc_list(items: list[dict], ctx: str, on: bool) -> str:
         if len(same) == 1:
             li.append(row(same[0]))
         else:
-            li.append(f'<li class="dgrp"><details><summary class="doc"><span class="t">{esc(GROUP_TR.get(kd, kd))}</span>'
+            li.append(f'<li class="dgrp"><details><summary class="doc">{doc_icon(kd)}<span class="t">{esc(GROUP_TR.get(kd, kd))}</span>'
                       f'<span class="k">{len(same)}</span></summary><ul>{"".join(row(d) for d in same)}</ul></details></li>')
     return f'<ul class="dlist{" on" if on else ""}" data-for="{esc(ctx)}">' + "".join(li) + "</ul>"
 

@@ -1165,7 +1165,7 @@ class TestDashboard(DashCase):
         self.assertEqual(self.strip_gen(out.read_text(encoding="utf-8")), self.strip_gen(first))
         self.assertTrue(first.startswith("<!doctype html>") and first.rstrip().endswith("</html>"))
         for needle in ('lang="tr"', '<svg class="logo" viewBox="0 0 24 24" aria-hidden="true">', "gün çalıştın", "son çalışma",
-                       "konu tekrar bekliyor", '<h2 class="bh">Kavram ağı</h2>', '<h2 class="cal-h">2 gün çalıştın',
+                       "konu tekrar bekliyor", '<h2 class="bh kg-h">Kavram ağı', '<h2 class="cal-h">2 gün çalıştın',
                        'class="plan"', 'class="graph"', "--current:", 'data-node="nash"',  "güncellendi:",
                        'sıradaki — Önce nash düğümüne bak."', "teach-theme", ">Temel<",
                        ">Hedef<"):
@@ -1247,10 +1247,11 @@ class TestDashboard(DashCase):
         self.assertIn('<i class="hue" style="background:#6f8fb8"', h)
         self.assertIn('stop-color="#6f9f7f"', h)
         # concept network: clouds and labels open the course, nodes its map; the legend only adds "sıradaki"
-        self.assertIn('<div class="kg-legend"><span class="kg-key"><i class="dot-next"></i>sıradaki</span></div>', h)
+        self.assertIn('<h2 class="bh kg-h">Kavram ağı<span class="kg-legend"><span class="kg-key"><i class="dot-next"></i>sıradaki</span></span></h2>', h)
         self.assertNotIn('<button type="button" class="kg-key"', h, "track names are already on the canvas")
         self.assertIn('class="kg-label" data-go="second"', h)
         self.assertIn('data-doc="demo--node-nash" data-node="nash"', h, "a node opens its card")
+        self.assertIn('<div class="kg-zoom"><button type="button" data-z="in"', h, "zoom / fit controls inside the box")
         self.run_learn("record", "--card", self.mcq, "--choice", "A", "--source", "lesson")
         h2 = self.render()
         self.assertRegex(h2, r'class="ltab is-next" id="lt-demo-0002-b"', "all recorded → the latest")
@@ -1273,8 +1274,14 @@ class TestDashboard(DashCase):
                          ["demo--cheatsheet", "demo--ref-sozluk", "demo--task-01-x"],
                          "linked documents + tasks on the lesson's nodes (nash)")
         self.assertIn('<a class="doc ext-doc" href="https://ex.org/a?x=1&amp;y=2" target="_blank" rel="noopener" '
-                      'title="Kaynak A (yeni sekmede)"><span class="t">Kaynak A</span><span class="k">Kaynak</span></a>',
+                      'title="Kaynak A (yeni sekmede)"><svg class="di" viewBox="0 0 24 24" aria-hidden="true"',
                       lists["0002-b"], "the lesson's sources open in a new tab")
+        self.assertIn('<span class="t">Kaynak A</span><span class="k">Kaynak</span></a>', lists["0002-b"])
+        # every row starts with its kind's decorative icon
+        self.assertEqual(len(re.findall(r'class="doc[^"]*"[^>]*><svg class="di" [^>]*aria-hidden="true"', lists["harita"])),
+                         len(re.findall(r'class="doc[^"]*"', lists["harita"])))
+        eng = load_engine(self.root)
+        self.assertEqual(set(eng.DOC_KIND.values()) | {"Kaynak"}, set(eng.DOC_ICON), "an icon for every document kind")
         self.assertNotIn("not a source", demo)
         self.assertIn('class="notes-btn" data-track="demo"', demo)
         # embedded at generation time, escaped; HTML pages framed lazily
@@ -1653,6 +1660,22 @@ class TestLayouts(EngineCase):
         self.assertTrue(all(0 <= x <= 760 and 0 <= y <= 440 for x, y in p1.values()))
         mean = lambda g: sum(p1[k][0] for k in keys if k[0] == g) / 8
         self.assertLess(mean("t1"), mean("t2"), "each track stays its own cluster")
+
+    def test_concept_graph_canvas_grows_with_nodes(self):
+        L = load_engine(self.root)
+        def track(tid, n):
+            nodes = [{"id": f"{tid}{i}", "level": "new"} for i in range(n)]
+            edges = [{"from": f"{tid}{i}", "to": f"{tid}{i + 1}"} for i in range(n - 1)]
+            return {"id": tid, "title": tid.upper(), "next": None, "map": {"nodes": nodes, "edges": edges}}
+        box = lambda svg: re.search(r'<svg class="graph" viewBox="0 0 (\S+) (\S+)"', svg).groups()
+        small, _ = L.render_graph_svg([track("a", 10), track("b", 10)])
+        self.assertEqual(box(small), ("760", "460"), "up to GRAPH_BASE_NODES: the base canvas")
+        big, _ = L.render_graph_svg([track("a", 60), track("b", 60)])
+        self.assertEqual(box(big), ("1520", "920"), "4× the base node count → 2× the side (√), same aspect")
+        self.assertEqual(big, L.render_graph_svg([track("a", 60), track("b", 60)])[0], "deterministic")
+        # every node and track title carries its own point as transform origin (zoom scales it in place)
+        self.assertEqual(len(re.findall(r'<g class="kg-n[^"]*" style="transform-origin:[\d.]+px [\d.]+px"', big)), 120)
+        self.assertEqual(len(re.findall(r'<text class="kg-label" [^>]*style="transform-origin:', big)), 2)
 
     def test_markdown_escapes(self):
         L = load_engine(self.root)
