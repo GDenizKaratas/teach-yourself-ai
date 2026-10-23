@@ -10,5 +10,9 @@
     "learner/state.json": true,
     "learner/moments.jsonl": true,
     "uv.lock": true
+  },
+  "editor.inlineSuggest.enabled": false,
+  "github.copilot.enable": {
+    "*": false
   }
 }

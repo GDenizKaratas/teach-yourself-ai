@@ -2351,8 +2351,10 @@ def track_hues(tracks: list[dict]) -> dict:
 GRAPH_BASE_NODES = 30  # up to this many nodes the concept network uses the base 760×460 canvas
 
 
-def render_graph_svg(tracks: list[dict], tab: dict | None = None, hue: dict | None = None) -> tuple[str, str]:
-    """(svg, legend html) for the concept network of all tracks. `tab` maps track id -> dashboard tab key; clouds,
+def render_graph_svg(tracks: list[dict], tab: dict | None = None, hue: dict | None = None,
+                     uid: str = "") -> tuple[str, str]:
+    """(svg, legend html) for the concept network of the given tracks (`uid` keeps gradient ids unique when one page
+    holds several networks). `tab` maps track id -> dashboard tab key; clouds,
     cloud labels, legend items and nodes carry data-go (and nodes data-node) so a click opens that track's tab."""
     tab = tab or {t["id"]: t["id"] for t in tracks}
     hue = hue or track_hues(tracks)
@@ -2394,9 +2396,10 @@ def render_graph_svg(tracks: list[dict], tab: dict | None = None, hue: dict | No
         pos = {k: (round(ox + s * p[0], 1), round(oy + s * p[1], 1)) for k, p in raw.items()}
     else:
         pos = {}
-    parts = [f'<svg class="graph" viewBox="0 0 {fmt(W)} {fmt(H)}" role="img" aria-label="Kavram ağı: bütün konular">',
+    parts = [f'<svg class="graph" viewBox="0 0 {fmt(W)} {fmt(H)}" role="img" aria-label="Kavram ağı: '
+             f'{esc(tracks[0]["title"]) if len(tracks) == 1 else "bütün konular"}">',
              "<defs>" + "".join(
-                 f'<radialGradient id="kg-c{i}"><stop offset="0" stop-color="{hue[t["id"]]}" stop-opacity=".26"/>'
+                 f'<radialGradient id="kg-{uid}c{i}"><stop offset="0" stop-color="{hue[t["id"]]}" stop-opacity=".26"/>'
                  f'<stop offset=".6" stop-color="{hue[t["id"]]}" stop-opacity=".09"/>'
                  f'<stop offset="1" stop-color="{hue[t["id"]]}" stop-opacity="0"/></radialGradient>'
                  for i, t in enumerate(tracks)) + "</defs>", f'<rect class="canvas" width="{fmt(W)}" height="{fmt(H)}" rx="12"/>']
@@ -2410,7 +2413,7 @@ def render_graph_svg(tracks: list[dict], tab: dict | None = None, hue: dict | No
         r = max(90.0, max(math.hypot(p[0] - mx, p[1] - my) for p in mine) * 1.45)
         clouds.append((t, mx, my, r))
         parts.append(f'<circle class="kg-cloud" data-go="{esc(tab[t["id"]])}" cx="{fmt(round(mx, 1))}" cy="{fmt(round(my, 1))}" '
-                     f'r="{fmt(round(r, 1))}" fill="url(#kg-c{i})"><title>{esc(t["title"])}</title></circle>')
+                     f'r="{fmt(round(r, 1))}" fill="url(#kg-{uid}c{i})"><title>{esc(t["title"])}</title></circle>')
     for a, b in edges:
         parts.append(f'<line class="kg-e" x1="{fmt(pos[a][0])}" y1="{fmt(pos[a][1])}" x2="{fmt(pos[b][0])}" y2="{fmt(pos[b][1])}"/>')
     for a, b in cross:
@@ -2471,7 +2474,10 @@ def render_graph_svg(tracks: list[dict], tab: dict | None = None, hue: dict | No
                      f'<circle cx="{fmt(x)}" cy="{fmt(y)}" r="{fmt(r)}"{fill}/>{txt}</g>')
     parts += title_parts
     parts.append("</svg>")
-    legend = '<span class="kg-key"><i class="dot-next"></i>sıradaki</span>' if nxt else ""
+    shown = {"done" if level[k] in DONE else ("new" if level[k] == "new" else "learn") for k in keys if k not in nxt}
+    legend = ('<span class="kg-key"><i class="dot-next"></i>sıradaki</span>' if nxt else "") + "".join(
+        f'<span class="kg-key"><i class="dot-{s}"></i>{t}</span>'
+        for s, t in (("learn", "öğreniliyor"), ("done", "öğrenildi"), ("new", "yeni")) if s in shown)
     return "\n".join(parts), legend
 
 
@@ -2663,7 +2669,7 @@ html:not(.js) .panel + .panel { margin-top: 40px; border-top: 1px solid var(--bo
 .dl { font-size: 15px; font-weight: 600; line-height: 1.25; max-width: 9em; }
 /* Genel */
 .gen { flex: 1 1 auto; min-height: 0; overflow: auto; }
-.gen-in { max-width: 1320px; margin: 0 auto; padding: 22px 20px 28px; }
+.gen-in { max-width: 1680px; margin: 0 auto; padding: 22px 20px 28px; }
 .gen-grid { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 28px; align-items: start; }
 .side { display: flex; flex-direction: column; gap: 22px; }
 .side .blk { margin: 0; }
@@ -2713,7 +2719,17 @@ html:not(.js) .panel + .panel { margin-top: 40px; border-top: 1px solid var(--bo
 .cal-days { display: grid; grid-template-columns: repeat(7, 13px); gap: 4px; margin-bottom: 6px; font-family: var(--font-ui); font-size: 11px; color: var(--muted); text-align: center; }
 .cal-h { margin: 0 0 10px; font-size: 16px; font-weight: 700; }
 .cal-h .wk { font-weight: 400; color: var(--muted); }
+.kg-box { display: flex; align-items: flex-start; gap: 10px; }
+.kg-views { flex: 1 1 auto; min-width: 0; }
+.kg-pick { flex: none; display: flex; flex-direction: column; gap: 6px; width: 150px; }
+html:not(.js) .kg-pick { display: none; }
+.kg-pick button { display: flex; align-items: center; gap: 8px; width: 100%; padding: 8px 10px; border: 1px solid var(--border-soft); border-radius: var(--r-md); background: var(--bg); color: var(--muted); font: 13px/1.3 var(--font-ui); text-align: left; cursor: pointer; }
+.kg-pick button:hover { background: var(--surface); color: var(--ink); }
+.kg-pick button[aria-pressed="true"] { border-color: var(--ink); color: var(--ink); font-weight: 600; }
+.kg-pick .hue { flex: none; width: 8px; height: 8px; border-radius: 2px; }
+@media (max-width: 720px) { .kg-box { flex-direction: column; } .kg-pick { flex-direction: row; flex-wrap: wrap; width: auto; } .kg-pick button { width: auto; } }
 .kg-wrap { position: relative; border: 1px solid var(--border-soft); border-radius: var(--r-lg); overflow: hidden; }
+.kg-wrap[hidden] { display: none; }
 .kg-wrap svg.graph { max-height: calc(100vh - 170px); max-height: calc(100dvh - 170px); }
 .js .kg-wrap svg.graph { cursor: grab; touch-action: none; -webkit-user-select: none; user-select: none; }
 .js .kg-wrap.drag svg.graph, .js .kg-wrap.drag svg.graph * { cursor: grabbing; }
@@ -2734,6 +2750,7 @@ svg.graph .kg-n.done circle { fill: var(--done-fill); stroke-width: 1.6; }
 svg.graph .kg-n.done text { fill: var(--ink); }
 svg.graph .kg-n.next circle { fill: var(--current); filter: drop-shadow(0 0 5px var(--current-glow)); }
 svg.graph .kg-n text { font-size: 10px; fill: var(--muted); text-anchor: middle; }
+svg.graph text { paint-order: stroke; stroke: var(--bg); stroke-width: 3px; stroke-linejoin: round; stroke-opacity: .85; }
 svg.graph .kg-n.new text { opacity: .8; }
 svg.graph .kg-n.next text { fill: var(--ink); font-weight: 600; }
 svg.graph .kg-n:hover text { fill: var(--ink); }
@@ -2742,6 +2759,10 @@ svg.graph .kg-label:hover { text-decoration: underline; }
 .kg-h { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .kg-legend { display: flex; gap: 6px 18px; }
 .kg-key { display: inline-flex; align-items: center; gap: 7px; font-family: var(--font-ui); font-size: 12px; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); background: none; border: 0; padding: 0; }
+.kg-key i { flex: none; width: 9px; height: 9px; border-radius: 50%; display: inline-block; box-sizing: border-box; }
+.kg-key i.dot-learn { background: var(--muted); }
+.kg-key i.dot-done { background: var(--done-fill); border: 1.6px solid var(--ink); box-shadow: 0 0 4px var(--done-glow); }
+.kg-key i.dot-new { border: 1.2px dashed var(--muted); }
 .kg-key i.dot-next { width: 9px; height: 9px; border-radius: 50%; display: inline-block; background: var(--current); box-shadow: 0 0 6px var(--current-glow); }
 footer { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px 20px; margin-top: 24px; padding-top: 12px; border-top: 1px solid var(--border-soft); color: var(--muted); font-family: var(--font-ui); font-size: 12px; }
 /* track: lesson tabs, then the reading area + notes column */
@@ -2995,7 +3016,7 @@ if(hit){route(hit.closest(".ltabs").getAttribute("data-track")+"/"+hit.getAttrib
 var t=$$("template[data-src]").filter(function(x){return abs(x.getAttribute("data-src"))===u;})[0];
 if(t){openDoc(t.id.slice(4));return;}if(/^(file|https?):/.test(m.href))f.setAttribute("src",m.href);});
 $$(".kg-wrap").forEach(function(w){var s=$("svg.graph",w);if(!s)return;
-var b0=s.getAttribute("viewBox").split(" ").map(Number),BW=b0[2],BH=b0[3],v=b0.slice(),KZ="teach-kg:"+b0.join(","),p=null,moved=false;
+var b0=s.getAttribute("viewBox").split(" ").map(Number),BW=b0[2],BH=b0[3],v=b0.slice(),KZ="teach-kg:"+(w.getAttribute("data-kg")||"")+":"+b0.join(","),p=null,moved=false;
 function set(n,save){var z=Math.min(1,Math.max(1/8,n[2]/BW)),vw=BW*z,vh=BH*z;
 v=[Math.min(BW-vw,Math.max(0,n[0])),Math.min(BH-vh,Math.max(0,n[1])),vw,vh];
 s.setAttribute("viewBox",v.map(function(x){return Math.round(x*10)/10;}).join(" "));s.style.setProperty("--ks",Math.pow(v[2]/BW,.6).toFixed(3));
@@ -3013,6 +3034,13 @@ s.addEventListener("pointerup",end);s.addEventListener("pointercancel",end);
 w.addEventListener("click",function(e){if(moved){moved=false;e.preventDefault();e.stopPropagation();}},true);
 $$(".kg-zoom button",w).forEach(function(bt){bt.addEventListener("click",function(){var z=bt.getAttribute("data-z");
 if(z==="fit")set(b0,1);else zoom(z==="in"?1/1.5:1.5,{x:v[0]+v[2]/2,y:v[1]+v[3]/2});});});});
+$$(".kg-pick").forEach(function(pk){var box=pk.parentNode,KP="teach-kg-pick";
+function pick(k){var hit=$$(".kg-wrap",box).filter(function(w){return w.getAttribute("data-kg")===k;})[0];if(!hit)return false;
+$$(".kg-wrap",box).forEach(function(w){w.hidden=w!==hit;});
+$$("button",pk).forEach(function(b){b.setAttribute("aria-pressed",b.getAttribute("data-kg")===k?"true":"false");});return true;}
+try{var k0=sessionStorage.getItem(KP);if(k0)pick(k0);}catch(e){}
+pk.addEventListener("click",function(e){var b=e.target.closest("button[data-kg]");if(!b)return;var k=b.getAttribute("data-kg");
+if(pick(k)){try{sessionStorage.setItem(KP,k);}catch(_){}}});});
 try{var q=new URLSearchParams(location.search).get("panel");if(q)openDoc(q);}catch(e){}
 var away=false,last=Date.now(),dirty=[];
 function back(){if(!away||(d.visibilityState&&d.visibilityState!=="visible"))return;away=false;
@@ -3237,15 +3265,31 @@ def render_overview(data: dict, tracks: list[dict], tab: dict) -> str:
         side.append(f'<div class="blk" id="son"><h2 class="bh">Son çalışmalar</h2><ol class="recent">{"".join(rows)}</ol></div>')
     if data["data_warnings"]:
         side.append('<div class="blk"><p class="warn">Bazı kayıt satırları okunamadı. Claude\'a söyle; o düzeltir.</p></div>')
-    if any(t["map"]["nodes"] for t in tracks):
-        svg, kg_legend = render_graph_svg([t for t in tracks if t["map"]["nodes"]], tab, track_hues(tracks))
+    mapped = [t for t in tracks if t["map"]["nodes"]]
+    if mapped:
+        hue = track_hues(tracks)
+        svg, kg_legend = render_graph_svg(mapped, tab, hue)
         zoom = ('<div class="kg-zoom"><button type="button" data-z="in" aria-label="Yakınlaştır" title="Yakınlaştır">+</button>'
                 '<button type="button" data-z="out" aria-label="Uzaklaştır" title="Uzaklaştır">−</button>'
                 '<button type="button" data-z="fit" aria-label="Tümünü göster" title="Tümünü göster">⤢</button></div>')
+        # one network of everything ("Tümü", shown by default) plus, with 2+ tracks, one network per track laid out
+        # on its own; the picker column beside them shows one at a time (DASH_JS), no JS → only "Tümü"
+        views = [("all", "Tümü", None, svg)]
+        if len(mapped) > 1:
+            views += [(tab[t["id"]], t["title"], hue[t["id"]], render_graph_svg([t], tab, hue, uid=f"t{i}-")[0])
+                      for i, t in enumerate(mapped)]
+        wraps = "".join(f'<div class="kg-wrap" data-kg="{esc(k)}"{"" if k == "all" else " hidden"}>{v}{zoom}</div>'
+                        for k, _, _, v in views)
+        pick = ""
+        if len(views) > 1:
+            pick = ('<div class="kg-pick" role="group" aria-label="Haritayı seç">' + "".join(
+                f'<button type="button" data-kg="{esc(k)}" aria-pressed="{"true" if k == "all" else "false"}">'
+                + (f'<i class="hue" style="background:{h}"></i>' if h else "") + f'<span>{esc(title)}</span></button>'
+                for k, title, h, _ in views) + "</div>")
         # the legend sits in the header line, outside the canvas, so it never covers nodes while panning / zooming
         main = (f'<div class="blk" id="ag"><h2 class="bh kg-h">Kavram ağı'
                 + (f'<span class="kg-legend">{kg_legend}</span>' if kg_legend else "")
-                + f'</h2><div class="kg-wrap">{svg}{zoom}</div></div>')
+                + f'</h2><div class="kg-box">{pick}<div class="kg-views">{wraps}</div></div></div>')
     else:
         main = ""
     return f'<div class="gen-grid"><div class="main">{main}</div><div class="side">{"".join(side)}</div></div>'

@@ -1246,8 +1246,14 @@ class TestDashboard(DashCase):
                       'title="Demo Konusu · şu anki konu"><i class="hue" style="background:#6f9f7f"', h)
         self.assertIn('<i class="hue" style="background:#6f8fb8"', h)
         self.assertIn('stop-color="#6f9f7f"', h)
-        # concept network: clouds and labels open the course, nodes its map; the legend only adds "sıradaki"
-        self.assertIn('<h2 class="bh kg-h">Kavram ağı<span class="kg-legend"><span class="kg-key"><i class="dot-next"></i>sıradaki</span></span></h2>', h)
+        # concept network: clouds and labels open the course, nodes its map; the legend names "sıradaki" and the node
+        # states present on the canvas
+        self.assertIn('<h2 class="bh kg-h">Kavram ağı<span class="kg-legend"><span class="kg-key"><i class="dot-next"></i>sıradaki</span>', h)
+        self.assertIn('<span class="kg-key"><i class="dot-new"></i>yeni</span>', h)
+        # 2+ tracks: a picker beside the network, "Tümü" shown by default, one network per track behind it
+        self.assertIn('<div class="kg-pick" role="group" aria-label="Haritayı seç"><button type="button" data-kg="all" aria-pressed="true">', h)
+        self.assertIn('<div class="kg-wrap" data-kg="second" hidden>', h)
+        self.assertIn('radialGradient id="kg-t1-c0"', h, "gradient ids stay unique across the networks")
         self.assertNotIn('<button type="button" class="kg-key"', h, "track names are already on the canvas")
         self.assertIn('class="kg-label" data-go="second"', h)
         self.assertIn('data-doc="demo--node-nash" data-node="nash"', h, "a node opens its card")
