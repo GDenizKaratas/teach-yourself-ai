@@ -4,13 +4,10 @@ __pycache__/
 *.tmp
 .DS_Store
 
-# Learner data stays out of the template. In a learner's private copy, delete these lines to version their progress.
-learner/*
-!learner/.gitkeep
-!learner/intake.example.md
-tracks/*
-!tracks/.gitkeep
-workspace/*
-!workspace/.gitkeep
-projects/*
-!projects/.gitkeep
+# Secrets never go to git, not even in a private repo.
+.env
+.env.*
+
+# Learner data (learner/, tracks/, workspace/, projects/) IS versioned, so your
+# progress lives in your own repo and other devices / cloud sessions can continue.
+# Keep your copy PRIVATE: these folders hold your answers and profile.

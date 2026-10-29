@@ -30,7 +30,7 @@ The split is deliberate. The LLM does what LLMs are good at: explaining, adaptin
 
 Follow [KURULUM.md](../KURULUM.md). In short: VS Code + Claude Code (paid plan) + Git for Windows on Windows; clone; copy `learner/intake.example.md` → `learner/intake.md` and fill it in; install uv and run `uv sync` **before** the first session, because the engine and hooks need Python; open the folder, start a new chat, and say "Merhaba".
 
-Learner data (`learner/`, `tracks/`, `workspace/`, `projects/`) is git-ignored so the template stays clean. In a learner's private copy, remove those lines from `.gitignore` to version their progress.
+Learner data (`learner/`, `tracks/`, `workspace/`, `projects/`) is versioned, so each learner keeps their progress in their own **private** repo (KURULUM.md step 2: `origin` = their private repo, `upstream` = this template). `.env` is always ignored. Maintainers: never commit learner data to this public template; develop the engine in a separate private copy and copy the tracked engine files over.
 
 `.vscode/settings.json` hides engine files (`tools/`, `.claude/`, `*.jsonl`) from the Explorer to keep a beginner's view clean and to keep answers out of sight. Remove `files.exclude` entries if you're maintaining the system.
 

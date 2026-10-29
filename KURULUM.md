@@ -16,9 +16,23 @@ git clone https://github.com/GDenizKaratas/teach-yourself-ai.git
 
 Git kullanmıyorsan GitHub'dan "Download ZIP" ile indirip klasörü açabilirsin.
 
+**İlerleme kendi GitHub'ında dursun (önerilir).** Öğrenenin verileri (`learner/`, `tracks/`, `workspace/`, `projects/`) git'e girer, yani her şey kendi reposunda saklanır ve başka bir bilgisayardan ya da telefondaki Claude Code'dan devam edilebilir. Bu veriler cevapları ve profili içerdiği için repo **mutlaka private** olmalı:
+
+1. GitHub'da boş, **private** bir repo aç (README ekleme), ör. `teach-benim`.
+2. Klonladığın klasörde:
+
+```bash
+cd teach-yourself-ai
+git remote rename origin upstream
+git remote add origin https://github.com/<kullanıcı-adın>/teach-benim.git
+git push -u origin main
+```
+
+İlerlemeyi kaydetmek için ara ara `git add -A && git commit -m "ilerleme" && git push`. Sistemin yeni sürümünü almak için `git pull upstream main`.
+
 ## 3. Mentor notunu ekle
 
-`learner/intake.md` dosyası git'e girmez (kişisel bilgi), bu yüzden klonda olmaz. Ya hazırladığın dosyayı kopyala, ya da `learner/intake.example.md` dosyasını `learner/intake.md` adıyla kopyalayıp doldur.
+`learner/intake.md` genel repoda yoktur (kişisel bilgi; senin private reponda durur). Ya hazırladığın dosyayı kopyala, ya da `learner/intake.example.md` dosyasını `learner/intake.md` adıyla kopyalayıp doldur.
 
 ## 4. Python'u kur (uv ile)
 
@@ -57,4 +71,4 @@ Claude panelinde **yeni bir sohbet** aç ve yaz: **"kurulum kontrolü yap"**.
 
 ## İlerlemenin yedeği (isteğe bağlı)
 
-Öğrenenin verileri (`learner/`, `tracks/`, `workspace/`) sadece onun bilgisayarında durur ve git'e girmez. Yedek almak için klasörde `tools/learn backup` çalıştır (Claude da riskli bir işlemden önce bunu kendisi yapar). Ya da klasörü ara ara kopyala. Ya da öğrenen için özel (private) bir repo açıp `.gitignore` dosyasındaki ilgili satırları kaldır.
+Öğrenenin verileri (`learner/`, `tracks/`, `workspace/`, `projects/`) git'e girer: 2. adımdaki private repoya push edildikçe yedeklenmiş olur. Ayrıca klasörde `tools/learn backup` yerel bir kopya alır (Claude da riskli bir işlemden önce bunu kendisi yapar). `.env` (API anahtarları) hiçbir zaman git'e girmez.

@@ -9,7 +9,8 @@
 ## Nasıl çalışır
 
 - **Önce hedefini sorar.** Birkaç soruyla asıl amacını bulur ve sana uygun dersi önerir.
-- **Ezberletmez, anlatır.** Temelden başlar, her seferinde tek adım ilerler ve sık sık soru sorar. Cevaplarından seni tanır.
+- **Ezberletmez, anlatır.** Temelden başlar, her seferinde tek adım ilerler. Cevaplarından seni tanır.
+- **Önce okursun, sonra sohbet.** Her gün kısa bir ders sayfası okursun. Ardından sohbette o dersten 6–10 soru gelir, her birinde "ne kadar eminsin" de sorulur. Kalan zaman, emin olup yanlış bildiğin yerlere ve emin olmadığın yerlere gider; cevabı sana vermez, ipuçlarıyla kendin bulursun.
 - **Unutturmaz.** Tekrar zamanı gelen konuları kısa ısınmalarla geri getirir.
 - **İlerlemeni gösterir.** Haritan, notların ve derslerin tek bir panoda durur.
 

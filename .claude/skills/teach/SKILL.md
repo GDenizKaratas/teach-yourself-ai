@@ -58,7 +58,7 @@ Facts feel arbitrary when there's no visible reason they *had* to be this way, a
 
 - **Socratic**: pose the motivating problem and let the learner attempt it first. It is stronger, but costs effort. Default to it when they can plausibly reason their way there. If the question has a definite right answer, it's still graded. Use the question protocol (`questions.md`).
 - **Expository**: you narrate the motivated discovery yourself. Use it when the topic is beyond cold-reasoning reach, when the learner is tired, or with a **complete beginner on a brand-new kind of thing** (see Beginner mode).
-- **Expository at length = a lesson page.** When a node cluster needs more than a few short messages of narration (history, mechanisms, definitions with cases), don't pour it into chat. Build an HTML lesson with the `lesson` skill, as pre-reading for the next session or as consolidation, and keep chat for the graded checks. The track's README says which nodes get a lesson.
+- **Expository at length = a lesson page.** Exposition goes into an HTML lesson (`lesson` skill), not into chat: every knowledge-bearing node is first read as a short pre-reading page, and chat starts from the diagnostic block (see "The day: read → diagnose → focus"). Short Socratic moves inside the focus block stay in chat. Skill-heavy parts (writing code, a proof) stay chat + task; the track's README says which is which.
 
 ## Examples, analogies and the goal
 
@@ -148,6 +148,30 @@ For **every node**, whether it's a foundational truth or a derived step:
 
 If you catch yourself asserting something the learner would have to take on faith, stop. Either motivate it and confirm it lands, or ground it in something already established.
 
+## The day: read → diagnose → focus (default for new material)
+
+New knowledge reaches the learner through reading first, then gets measured and repaired in chat. Steps, in order:
+
+1. **Read.** The day's lesson page (1–3 nodes, `lesson` skill), built at the previous wrap-up and read by the learner before the session (bedtime or phone reading works). No page yet (first day of a track, or it wasn't built)? Build it now and let them read it; don't narrate it in chat instead.
+2. **Diagnose.** Open with the pasted "ders sonucu" line (`lesson` → result line; diagnostic, never mastery). Then a block of **6–10 graded questions** on the page's nodes, climbing: recognition (MCQ) → own-words explain/recall (typed or dictated) → transfer / "mülakatta sorulsa". Use cards that are *not* the page's quizzes. **Confidence on every one** (`questions.md` → question 2). Grade each answer as it comes (verdict + one line); no teaching between them, so the block stays a measurement.
+3. **Sort.** Put every answer from steps 2 (page quizzes included) into four cells and show the learner the sort in one short table:
+
+   | | sure (`Eminim`) | unsure (`Emin değilim` / `Tahmin`) |
+   |---|---|---|
+   | **right** | done for today | fragile: one variant later |
+   | **wrong** | **fix first**: a confident wrong model | fix second |
+
+   `Bilmiyorum` counts as wrong + unsure.
+4. **Focus.** Spend the rest of the block only on the cells that need it: wrong+sure first (dislodge the model: ask for their "neden?", show the case it breaks on), then wrong+unsure, then right+unsure. One reasoning step at a time, hints in steps (`task` → hint ladder) so the learner finds or adapts the answer themselves; never just hand it over. Close each repaired node with a **different** graded card (a variant, applied to a new case). Right+sure gets no repeat today, but its cards stay in spaced review like every card: a node counts as learned only after it passes again on separate days (`progress`: retained → owned → durable).
+5. **Do.** Practical tracks then run the task block (`task`), coding first within that block.
+6. **Wrap-up** builds the next page, so the next day starts again at step 1.
+
+The warm-up (`review`, 2–3 due cards) still opens the session before step 2 when cards are due; a due card from the page's nodes can count toward the diagnostic block. The probe → plan → teach phases above still decide *what* goes on the page and in which order; this shape decides how the learner meets it.
+
+## Phone sessions
+
+When the learner says they're on the phone: no coding, no API keys, no running code. Reading the page, the diagnostic block and the focus block all work by phone. Defer every hands-on step to an "Ertelenen (bilgisayarda)" list in the track's `handoff.md` and pick it up at the computer.
+
 ## Session shape (the budget varies: 5, 15, 30 or 45 min)
 
 Read the time budget in `profile.md`; if today's isn't stated, ask in one line at the start ("Bugün ne kadar vaktin var: 5, 15, 30, 45 dk?"). Then pick the shape. Plan by **number of steps**, not minutes: reply gaps stretch wall-clock.
@@ -155,15 +179,16 @@ Read the time budget in `profile.md`; if today's isn't stated, ask in one line a
 | | 5 min ("sadece tekrar") | 15 min | 30 min | 45 min |
 |---|---|---|---|---|
 | warm-up (`review`) | 2–3 due cards | 2 cards | 2–3 cards | 3 cards |
-| new material (the loop) | – | 1 node, or graded checks on a pre-read lesson | 1–2 nodes | 2–3 nodes |
+| new material (read → diagnose → focus) | – | result line + 6 questions, focus on wrong+sure only | result line + 6–8 questions + focus | result line + 8–10 questions + focus |
 | hands-on (`task`) | – | – (or one step of an open task) | one tiny task | one task + explain-back |
-| wrap-up | wrap-up lite: one-line handoff append | exit question + handoff (2 min) | exit question + handoff | exit question + handoff + teaser |
+| wrap-up | wrap-up lite: one-line handoff append | exit question + handoff + next page (2 min) | exit question + handoff + next page | exit question + handoff + next page + teaser |
+
+The lesson page itself is read outside these minutes.
 
 - **5 min** keeps the streak and the spacing alive on a busy day. No new material, no task. Nothing is due? Ask one card from an earlier node instead. Say plainly that a short day counts.
-
-- **15 min** works best flipped: the learner read the lesson page beforehand (`lesson` skill), so the session is retrieval and one new step, not narration. Put the one new idea *first*, right after the 2-card warm-up; answers get sloppier toward the end.
-- **30 min**: one new node, a tiny task, nothing else.
-- **45 min**: the full loop.
+- **15 min**: diagnostic block first, right after the 2-card warm-up; answers get sloppier toward the end. Focus on wrong+sure only; the rest goes into "Next step".
+- **30 min**: the full read → diagnose → focus, one tiny task.
+- **45 min**: the same, plus a full task and explain-back.
 
 Never squeeze in "one more node" past the budget. Stopping at a clean point beats an overloaded session. Lesson pages are built *outside* the learner's time (after the goodbye at wrap-up).
 

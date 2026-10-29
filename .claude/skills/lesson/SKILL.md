@@ -9,10 +9,10 @@ A lesson is one self-contained HTML page in `tracks/<t>/lessons/NNNN-<slug>.html
 
 ## Two uses, decided per track in its README ("How this track teaches")
 
-- **Pre-reading (flipped).** At wrap-up, after the goodbye, build the lesson for the next node(s). The learner reads it alone before the next session; that session opens with graded checks in chat on exactly those nodes. Best for knowledge-heavy nodes (history, definitions, mechanisms) and for short sessions: the 15 minutes go to retrieval, not to narration.
+- **Pre-reading (the default).** At wrap-up, after the goodbye, build the lesson for the next node(s). The learner reads it alone before the next session; that session opens with the result line, then the diagnostic block and the focus block in chat on exactly those nodes (`teach` → "The day: read → diagnose → focus"). Every knowledge-bearing node (definitions, mechanisms, history, how a tool behaves) is met this way first, so chat never narrates what a page can carry.
 - **Consolidation.** After a cluster reached `checked` in chat, build the lesson as the durable record the learner returns to. Best when the chat covered a lot of ground or when a simulation would make the idea concrete.
 
-Skill-heavy nodes (writing a proof, writing code) get no *pre-reading* lesson: chat + `task`. Don't produce a pre-reading lesson because you can; produce it because this node reads better than it talks. Separately, every done node ends up in one **consolidation** lesson per cluster of 2–4 nodes (written after the cluster is done; `status` → Notes gaps lists the missing ones), so the learner has one page to return to.
+Skill-heavy nodes (writing a proof, writing code) get no *pre-reading* lesson: chat + `task`. A node that is both (a concept, then writing it) gets a page for the concept and a task for the writing. Separately, every done node ends up in one **consolidation** lesson per cluster of 2–4 nodes (written after the cluster is done; `status` → Notes gaps lists the missing ones), so the learner has one page to return to.
 
 ## Before writing
 
