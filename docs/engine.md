@@ -37,23 +37,30 @@ Learner data (`learner/`, `tracks/`, `workspace/`, `projects/`) is versioned, so
 ## Engine cheat sheet
 
 ```bash
-tools/learn status                       # what the session-start hook prints
+tools/learn status                       # what the session-start hook prints: tracks, ## Kişi (learner/relationship.md: who they are,
+                                         # last session, Hayatından dates, advice/presence allowance), ## Lessons (unrecorded lesson /
+                                         # review-page results), ## Resume point, ## Konum (where / direction / next), ## Tempo (pace, band,
+                                         # dull next node), unlogged sessions, notes gaps, ## Inbox (tracks/<t>/inbox.md), engagement
 tools/learn new-track python-basics --title "Python Temelleri"
 tools/learn add-card --track python-basics < card.json
 tools/learn cards --track t --node n [--html]  # cards with answers, or quiz skeletons for a lesson page
 tools/learn due [--track t] [--limit 6] [--ahead 1]
 tools/learn due --today-misses           # today's wrong / heavily hinted cards, for the wrap-up retest
+tools/learn due --html [--limit 8]       # write learner/reviews/review-<today>.html: mixed review page, no topic/node names
 tools/learn record --card pb-001 --choice B [--confidence 3] [--answer-text "why"]   # confidence only if asked
 tools/learn record --card pb-001 --dont-know                  # "Bilmiyorum": wrong, confidence 1
-tools/learn record --card pb-001 --choice B --source lesson   # pasted from a lesson quiz: diagnostic, not scheduled
+tools/learn record --card pb-001 --choice B --source lesson   # one pasted lesson answer (old line): diagnostic, not scheduled
 tools/learn record --card pb-001 --choice B --source predict  # a guess before teaching: diagnostic, not scheduled
+tools/learn record-lesson < block.txt    # a pasted `ders sonucu NNNN v3` / `tekrar sonucu YYYY-MM-DD v3` block: mcq items
+                                         # graded AND scheduled (scheduled: true / source review-page); yaz/soru → tracks/<t>/inbox.md;
+                                         # output: recorded, to_grade (grade 2–3 in chat with record --correct), questions, flags
 tools/learn verify-task --dir tracks/t/tasks/01-x < reference.py   # check tests in a temp copy
 tools/learn task --track t --task 01-x --node n --status passed --hints 1
 tools/learn map --track t [--json]      # parsed node table + mermaid graph of map.md
 tools/learn progress [--track t]         # every map node: new → checked → retained → owned (+ slipping)
 tools/learn signals                      # how this learner learns: calibration, question types, generation_gap, trend, hints
 tools/learn journey                      # then-vs-now evidence for recaps
-tools/learn moment --kind recap          # log an engagement moment (pacing: recap/teaser/value/milestone)
+tools/learn moment --kind recap          # log an engagement moment (pacing: recap/teaser/value/milestone/advice/presence)
 tools/learn validate [--track t]         # checks the mechanical parts of the standard
 tools/learn refresh [--quiet]            # regenerate learner/export.json → dashboard.html → lesson mini maps (auto after every write and tracks/learner edits; TEACH_NO_DASHBOARD=1 disables)
 tools/learn dashboard [--open]           # read-only learner page: learner/dashboard.html

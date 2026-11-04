@@ -117,6 +117,16 @@
             }
           }
         },
+        "band": {
+          "type": "object",
+          "description": "additive (teach.export/1): accuracy of the last 10 scheduled card answers and the pacing hint",
+          "required": ["n", "accuracy", "hint"],
+          "properties": {
+            "n": {"type": "integer", "minimum": 0},
+            "accuracy": {"type": ["number", "null"]},
+            "hint": {"enum": ["down", "hold", "up"]}
+          }
+        },
         "recent": {
           "type": "array",
           "maxItems": 14,
@@ -400,6 +410,31 @@
         "resume": {
           "$ref": "#/$defs/str_or_null",
           "description": "the handoff's 'Öğrenci için' line"
+        },
+        "pace": {
+          "type": "object",
+          "description": "additive (teach.export/1): map nodes, nodes done (checked+), study days, nodes per day, days left at that rate",
+          "required": ["nodes", "done", "days", "per_day", "remaining_days"],
+          "properties": {
+            "nodes": {"type": "integer", "minimum": 0},
+            "done": {"type": "integer", "minimum": 0},
+            "days": {"type": "integer", "minimum": 0},
+            "per_day": {"type": ["number", "null"]},
+            "remaining_days": {"type": ["integer", "null"]}
+          }
+        },
+        "position": {
+          "type": "object",
+          "description": "additive (teach.export/1): where the track stands — the node to teach now, the path from it toward the goal (ids only), counts",
+          "required": ["current", "path", "done", "total", "learning", "finished"],
+          "properties": {
+            "current": {"$ref": "#/$defs/str_or_null"},
+            "path": {"type": "array", "items": {"type": "string"}},
+            "done": {"type": "integer", "minimum": 0},
+            "total": {"type": "integer", "minimum": 0},
+            "learning": {"type": "integer", "minimum": 0},
+            "finished": {"type": "boolean"}
+          }
         }
       }
     },

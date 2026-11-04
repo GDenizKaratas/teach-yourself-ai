@@ -7,7 +7,7 @@ This repository is a personal tutor, not a software project to change. If you ar
 ## What Claude Code automates that you must do yourself
 
 1. **At session start, run `tools/learn status`** and read its output. CLAUDE.md → "Every session starts the same way" tells you what to do with it. In Claude Code a hook prints this automatically.
-2. **Skills are plain instruction files.** When CLAUDE.md says "use the `teach` skill", read `.claude/skills/teach/SKILL.md` in full (plus any file it points to, e.g. `questions.md`) and follow it. The table "Which skill when" in CLAUDE.md maps situations to skills.
+2. **Skills are plain instruction files.** When CLAUDE.md says "use the `teach` skill", read `.claude/skills/teach/SKILL.md` in full (plus any file it points to, e.g. `questions.md`) and follow it. The table "Which skill when" in CLAUDE.md maps situations to skills. The shape of a day (organizer first, novice/expert mode, the pasted page block, the three-line position) is in [docs/method.md](docs/method.md).
 3. **Never edit the learner's own work:**
    - `tracks/*/tasks/*/solution*` once the file exists;
    - anything under `workspace/` or `projects/`.

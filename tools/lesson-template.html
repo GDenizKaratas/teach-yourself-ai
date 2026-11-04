@@ -42,6 +42,11 @@
   </div>
 </section>
 
+<!-- 2b. Konum görseli: "neredeyiz, hangi yöne". data-pos'u `tools/learn refresh` export.json'dan doldurur (boşken
+     görünmez); elle yazma. data-style ders ders değiştirilebilir: path (yatay adımlayıcı, varsayılan) · pyramid
+     (temel altta, hedef tepede) · ring (biten/toplam halkası). Biçim: components.js başlığı 9b. -->
+<div class="position-slot" data-style="path"></div>
+
 <!-- 3. Dersin haritadaki yeri. Yalnızca yorumu ve boş SVG'yi yaz: `tools/learn refresh` SVG'yi yorumdaki
      argümanlardan doldurur ve güncel tutar; elle düzenleme. Dersin düğümleri kalın siyah çerçeveli; sarı yalnızca
      konunun gerçek sıradaki düğümü. Dolana kadar components.js düğümleri sade çiplerle gösterir. -->
@@ -110,6 +115,53 @@
 </div>
 </section>
 
+<!-- ACEMİ SIRASI (isteğe bağlı üç adım; docs/method.md "gün şekli"): Çözümlü örnek → Yarım örnek → Kendin yap →
+     Kontrol. Öğrencinin giriş seviyesi "uzman" ise ilk ikisini (Çözümlü, Yarım) SİL ve doğrudan "Kendin yap" +
+     Kontrol'e geç. Acemi için üçü de kalır; adım başına yine tek fikir. -->
+
+<!-- Çözümlü örnek: baştan sona çözülmüş TAM bir örnek. Her adımın arkasındaki akıl yürütme <details class="note">
+     içinde (öğrenci önce adımı okur, sonra "neden böyle?"yi açar). Kontrol yok: burada öğrenci yalnızca izler. -->
+<section class="step" data-title="Çözümlü örnek">
+<h2>Çözümlü örnek: {{somut durum}}</h2>
+<p>{{Problemi ver.}}</p>
+<ol>
+  <li>{{1. adım: ne yapıldı}}
+    <details class="note"><summary>Neden bu adım?</summary><p>{{akıl yürütme}}</p></details></li>
+  <li>{{2. adım}}
+    <details class="note"><summary>Neden bu adım?</summary><p>{{akıl yürütme}}</p></details></li>
+  <li>{{Sonuç ve tek cümlelik yorum.}}</li>
+</ol>
+</section>
+
+<!-- Yarım örnek (tamamlama): yukarıdakiyle aynı yapıda ikinci bir örnek; bir adım BOŞ bırakılır, öğrenci doldurur.
+     Boşluk ya bir açık cevap kutusudur (.write[data-card]: kartın cevabı sohbette puanlanır) ya da bir
+     kontrol quiz'i (cards --html). Boşluğa açık uçlu bir kart yoksa önce add-card ile yaz. -->
+<section class="step" data-title="Yarım örnek">
+<h2>Yarım örnek: {{ikinci durum}}</h2>
+<p>{{Problemi ver; 1. adım çözülmüş.}}</p>
+<ol>
+  <li>{{1. adım çözülmüş}}</li>
+  <li><b>Sen tamamla:</b> {{boş bırakılan adımın tarifi}}</li>
+</ol>
+<div class="write" data-card="{{xx-020}}" data-label="Tamamla">
+  <p class="q">{{Boşluğun sorusu: bu adımda ne yapılır, neden?}}</p>
+</div>
+<!-- ya da: {{quiz check: data-card, data-label="Kontrol"}} -->
+</section>
+
+<!-- Kendin yap: aynı türden üçüncü bir problem, ipucu yok. Açık cevap kutusu (.write[data-card]); components.js
+     textarea ("Kendi cümlelerinle… (bakmadan)"), eminlik seçici ve Kaydet ekler. Model cevap SAYFADA YOK: öğretmen
+     sohbette puanlar (blok → inbox). Mülakat tarzı bir soruysa üstüne <div class="timer" data-card data-seconds>
+     koy: Başlat/Durdur, geçen saniye bloğa "süre:" satırı olarak girer. -->
+<section class="step" data-title="Kendin yap">
+<h2>Kendin yap</h2>
+<p>{{Üçüncü problem, tam metin.}}</p>
+<!-- <div class="timer" data-card="{{xx-021}}" data-seconds="90"></div> -->
+<div class="write" data-card="{{xx-021}}">
+  <p class="q">{{Açık uçlu kartın sorusu (cards --html'den).}}</p>
+</div>
+</section>
+
 <!-- Dene: bileşen. Cevap gösterilmeden önce öğrenci hamle yapar. Etkileşimli alıştırma (matris, tablo)
      data-card taşımaz ve kayda geçmez; adımın kontrolü yine bir kart olur. -->
 <section class="step" data-title="Dene">
@@ -146,15 +198,29 @@
 </div>
 </section>
 
-<!-- Geri çağırma: yalnızca 1–2 öğe (asıl kontroller adımların sonunda). Kart quiz'i ya da `cards --html`'in
-     verdiği data-card'lı <details class="recall">. Her data-card'lı quiz'e components.js Bilmiyorum satırı,
-     eminlik (Tahmin / Emin değilim / Eminim), "Neden?" alanı ve Cevapla düğmesi ekler. İlk cevaptan sonra
-     altta yapışkan sonuç çubuğu çıkar ("2/4 cevaplandı · Kopyala → sohbete yapıştır"); hepsi bitince
-     aynı satır aşağıdaki .score içinde de görünür. -->
+<!-- Soru kutusu (sayfada bir tane): öğrencinin anlamadığı / sormak istediği. components.js textarea ekler, metin
+     localStorage'da kalır; boş olmayan her satır blokta bir "soru:" satırı olur, wrap-up'ta cevaplanır. -->
+<div class="ask-box"></div>
+
+<!-- Geri çağırma: yalnızca 1–2 öğe (asıl kontroller adımların sonunda). Kart quiz'i (cards --html) ya da açık
+     uçlu kart için .write[data-card]. Her data-card'lı quiz'e components.js Bilmiyorum satırı, eminlik
+     (Tahmin / Emin değilim / Eminim), "Neden?" alanı ve Cevapla düğmesi ekler; her .write kutusuna textarea,
+     eminlik ve Kaydet. İlk cevaptan sonra altta yapışkan sonuç çubuğu çıkar ("4 öğeden 2'si cevaplandı · tek
+     Kopyala düğmesi"); hepsi bitince aynı blok aşağıdaki .score içinde <pre> olarak da görünür.
+
+     SONUÇ BLOĞU (v3; docs/plan-yontem-guncelleme.md §1). Kopyala tek seferde bunu üretir, öğrenci sohbete yapıştırır,
+     öğretmen `tools/learn record-lesson` ile kaydeder:
+       ders sonucu {{NNNN}} v3
+       mcq: gt-012=B/3 "çünkü ikisi de sapmak ister"; gt-013=?/1; gt-014=A/2
+       yaz: gt-020/2 | Nash dengesi, kimsenin tek başına sapmak istemediği durum ⏎ ikinci satır
+       soru: Peki iki denge varsa hangisi seçilir?
+       süre: gt-030=58s
+     mcq: KART=SEÇİM/EMİNLİK ["neden"], "; " ile. yaz: kaydedilmiş her .write için KART/EMİNLİK | metin (satır sonu ⏎).
+     soru: .ask-box'ın her satırı. süre: .timer ölçümleri. Olmayan satır yazılmaz. -->
 <section class="step" data-title="Geri çağırma">
 <h2>Geri çağırma</h2>
-<p class="note">Yukarı bakmadan cevapla. Zorlanman iyi işaret. Bitince çıkan satırı kopyalayıp sohbete yapıştır.</p>
-{{1–2 öğe: quiz (data-card, data-label="Geri çağırma") ya da details.recall[data-card]}}
+<p class="note">Yukarı bakmadan cevapla. Zorlanman iyi işaret. Bitince çıkan bloğu kopyalayıp sohbete yapıştır.</p>
+{{1–2 öğe: quiz (data-card, data-label="Geri çağırma") ya da .write[data-card]}}
 <div class="score"></div>
 
 <details class="recall">

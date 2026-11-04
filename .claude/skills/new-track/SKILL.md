@@ -58,12 +58,15 @@ Build the **outline** now and the **details** just in time. The learner shouldn'
 - **Details for the first 2–3 nodes only:** their misconceptions in `misconceptions.md` (belief / why tempting / correction / `seen: anticipated`) and their first task idea. Add the next nodes' details as teaching reaches them, usually at the end of a session for the next one.
 - **Task ladder** in `README.md`: a short list of planned tasks per node. Create task folders only when you reach them.
 - **Lesson ratio** in `README.md` → "How this track teaches": which nodes are knowledge-bearing and get an HTML lesson page as pre-reading (`lesson` skill; the default day is read → diagnose → focus, see `teach`), which are skill-heavy and run as chat + task, and which `assets/` components carry the simulations (payoff matrix, truth table, or a new one). A history or definitions track leans to lessons; a proof-writing or coding track leans to tasks.
-- **Probe:** only if the learner has some experience. Write probe cards one at a time as you ask them. An unasked card on a node nobody has worked on is never scheduled, and a complete beginner gets no probe.
+- **Organizer page first (Ders 0).** Build `tracks/<t>/lessons/0000-harita.html` from `tools/organizer-template.html` right after `map.md` exists: every node in two plain sentences (the `tanım (öğrenci)` column), one "neden var?" line, one hook question in a `<details class="recall">` (no `data-card`, unscored), the full map in the `lmap-slot`, an ask-box at the end. Add a `<!-- dull: … -->` line to `map.md` for foundational-but-tedious nodes (status uses it for a "yanında olma" sentence). The learner reads the organizer before anything is graded; `tools/learn validate` accepts the page without quizzes.
+- **Entry mode, then probe.** After the organizer: three easy generative questions set the entry mode (`docs/method.md`; write it into `learner/profile.md` → "Entry mode (measured)"). Expert mode → the probe (3–5 generative cards, written one at a time as you ask them). Novice mode or a declared complete beginner → no probe: the first lesson page, novice sections.
 
 Run `tools/learn validate --track <name>` until there are no errors. Treat warnings as defects to fix.
 
 ## 5. Check against `standard.md`, then present
 
-Go through the checklist in `standard.md` honestly. Then present the plan to the learner in their language: what we'll learn, in what order, why that order, and what they'll be able to do at the end. Keep it simple for a beginner. **Wait for their go-ahead**, then hand over to `teach`.
+Go through the checklist in `standard.md` honestly. Then present the plan to the learner in their language: what we'll learn, in what order, why that order, and what they'll be able to do at the end. Keep it simple for a beginner. **Wait for their go-ahead**, then open the organizer page for them (`open tracks/<t>/lessons/0000-harita.html`) and hand over to `teach`.
+
+If the learner brought their own material (a book, a course, links), run the `resource` skill before §3 so the researcher works from it.
 
 Write `handoff.md` → "Next step".

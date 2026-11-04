@@ -94,6 +94,14 @@ If they typed something else in "Other", judge whether it matches an option or r
 
 **5. Update `misconceptions.md`.** Switch `seen: anticipated` to `observed` when a learner actually holds it. Add new ones you diagnosed from open answers.
 
+## One question, one turn
+
+The learner's time is the scarce resource, not yours. A graded question in chat costs the learner **one** turn: the card is stored and asked in the same response (`add-card`, then `AskUserQuestion`), and the answer is recorded and judged in the next (`record`, then the verdict line). No separate "neden?" round except in the three cases above, no bookkeeping narration, no table after every block. If a page can ask it (quiz, `.write` box), let the page ask it and read the block with `record-lesson`; chat is for probes, repairs and what the page can't grade.
+
 ## Predict questions ("Tahminin ne?")
 
-A guess *before* teaching a step, rare and optional (when to use one is in `teach`). Store it as a normal card, ask it the same way, framed as a guess ("Henüz anlatmadım, tahminin ne?"), and record with `--source predict`: diagnostic only, never rescheduled, never mastery. No confidence, no ✓/✗ tone; the teaching that follows opens by resolving the guess.
+A guess *before* teaching a step, a hook, 1–2 per page or session at most (when to use one is in `teach`). Store it as a normal card, ask it the same way, framed as a guess ("Henüz anlatmadım, tahminin ne?"), and record with `--source predict`: diagnostic only, never rescheduled, never mastery. No confidence, no ✓/✗ tone; the teaching that follows opens by resolving the guess.
+
+## Answers that come from a page
+
+A lesson or review page collects quiz answers with confidence, written answers (`.write` boxes) and the learner's questions, and hands them over as one pasted block. `tools/learn record-lesson` (stdin = the block) records everything at once: **confident quiz answers are scheduled exactly like chat answers** (v3 blocks; the old one-line format stays diagnostic), written answers and questions go to `tracks/<t>/inbox.md`. You grade 2–3 of the written answers in chat with `record --card <id> --correct yes|partial|no --answer-text "<their words>"`; the rest stay in the inbox as evidence of their wording for the cheatsheet. Never re-ask in chat what the page already measured today.

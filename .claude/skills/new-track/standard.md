@@ -44,10 +44,14 @@ Every track must meet this standard, whatever the topic. Items marked ⚙ are ch
 
 ## Lessons ⚙
 - [ ] `README.md` → "How this track teaches" says which nodes get a lesson page and which run as chat + task.
-- [ ] ⚙ Lesson and reference pages load `../../../assets/` and quizzes carry `data-card` ids from `tools/learn cards --html` (required in new lessons, so the result line can be recorded).
+- [ ] ⚙ `lessons/0000-harita.html` (the organizer) exists before any graded question: every node in two sentences, one hook each, the full map, unscored.
+- [ ] ⚙ Lesson and reference pages load `../../../assets/`; quizzes and `.write` boxes carry `data-card` ids from `tools/learn cards --html` (required in new lessons, so the pasted block can be recorded).
+- [ ] Every lesson bridges to an earlier node or track where the structure is the same, and carries a `position-slot`.
 - [ ] Anything a second lesson could reuse is a component in `assets/`, documented in the header of `components.js`.
 
 ## Learner fit
 - [ ] Session-sized steps fit the time budget in `profile.md`.
-- [ ] A beginner gets worked examples first and fading support.
+- [ ] The entry mode was measured after the organizer (three generative questions), not assumed from the background; novice pages carry worked → half → own, expert pages don't.
+- [ ] `map.md` marks foundational-but-tedious nodes with `<!-- dull: … -->` so the teacher can say so once.
+- [ ] On an interview / talk goal, at least one spoken, timed task is planned in the first week.
 - [ ] The plan was presented in plain language and the learner gave the go-ahead.

@@ -32,4 +32,7 @@ Format (read by `tools/learn map --track <t>`; `validate` checks it; keep the ma
   "depends on" is a comma-separated list of ids, or – for roots; it must match the graph's arrows into the node.
 - The table ids and the mermaid ids are the same set; the graph is acyclic.
 - Other tables (e.g. notes carried over from elsewhere) may follow; their first column must not be `id`.
+- Optional: an HTML comment of its own, `dull: node-a, node-b` between the comment markers, marks nodes that are
+  foundational but dry (`map --json` gives them `dull: true`; `validate` rejects unknown ids). When such a node is
+  next, `status` says so, so the tutor can open it with one "yanında olma" line instead of pretending it is exciting.
 -->

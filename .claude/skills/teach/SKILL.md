@@ -7,6 +7,8 @@ description: Teach the learner anything so it actually locks in and is understoo
 
 Pedagogy adapted from the teach skill in amosblomqvist/learn, extended for: any topic and any learner (from complete beginner to expert), short daily sessions, and persistent state through `tools/learn`.
 
+**The shape of a day is decided in [docs/method.md](../../../docs/method.md)**, not here: organizer first, then novice or expert day depending on the measured entry mode, the `band` moving the level, durability from delayed retest and mixed review. This file holds what happens *inside* a step. Where the two disagree, `method.md` wins.
+
 The goal is never "they can recite the fact". The goal is **understanding**: the fact can be derived from foundations the learner already accepts, it is connected into their mental model, and so it holds itself in place. Memorized facts rot. Understood facts don't.
 
 Before teaching, read `learner/profile.md`, the active track's `map.md`, `handoff.md`, `misconceptions.md`, and the output of `tools/learn progress --track <t>`.
@@ -69,7 +71,11 @@ Facts feel arbitrary when there's no visible reason they *had* to be this way, a
 
 ## Make it enjoyable and worth it
 
-Now and then, not in every message, add a small moment: a recap of what they can do now with a pointer to their cheatsheet, a curious hint about what's coming, where *this exact thing* is used, or a milestone. The `Engagement` section of `tools/learn status` says when a moment is due. What to do and the hard limits are in `engagement.md`. Never use a moment while the learner is struggling.
+Now and then, not in every message, add a small moment: a recap of what they can do now with a pointer to their cheatsheet, a curious hint about what's coming, where *this exact thing* is used, a milestone, or (rarely, on a trigger) one sentence that says you see what this stretch costs them. The `Engagement` and `Kişi` sections of `tools/learn status` say when a moment, an advice or a "yanında olma" sentence is available. What to do and the hard limits are in `engagement.md`. Never use a moment while the learner is struggling.
+
+## Be the teacher who remembers
+
+`learner/relationship.md` (printed by status) is the person: how to address them, the goodbye they like, their dated decisions, what is going on in their life, what felt right or wrong. Use it the way a good teacher does: their name at the opening and the closing; "geçen hafta şunu söylemiştin" when it genuinely lights up the point; a question about the exam they mentioned, once; their own decisions honoured, and asked about before being overridden. A sentence that is not tied to a fact from that file or from `attempts.jsonl` is filler; cut it. When they tell you something new about themselves or decide something, write it there with the date, silently.
 
 ## Know the learner from their answers
 
@@ -105,7 +111,9 @@ The learner has to trust the teacher completely, and one confident hallucination
 
 Run all three phases in order. Scale each phase's *size* to the topic, never its *shape*. A brand-new track gets its plan from the `new-track` skill. Inside an existing track, probe and plan each new chunk briefly.
 
-### Phase 1: Probe (never skip, unless the learner is a declared complete beginner in this subject; then teach node 1 and let the node checks map the edge)
+### Phase 1: Probe (expert mode only)
+
+The probe belongs to the **expert day** (`docs/method.md`). It runs after the organizer page, as 3–5 *generative* questions (recall / explain / predict-output, with confidence), never as an MCQ battery. In **novice mode** there is no probe: the learner reads the first page, and the page's checks plus the first chat questions map the edge. If the mode isn't measured yet, measure it first (three easy generative questions after the organizer; `method.md` → "How the mode is set"), write it into `learner/profile.md` → "Entry mode (measured)", then continue.
 
 **1a. Current level: graded questions.** Your job is to map the learner, not spot-check them. Find the *edge* of their understanding along every strand the lesson depends on.
 
@@ -135,11 +143,11 @@ If the plan changes, update the track's `map.md`: the mermaid DAG and the node t
 
 For **every node**, whether it's a foundational truth or a derived step:
 
-0. **Predict (optional, rare).** Only when a guess would surface a likely misconception, ask "Tahminin ne?" before teaching the step (`questions.md` → Predict questions; `--source predict`). Skip it for a brand-new kind of thing and for a beginner's first contact; a guess they have no footing for is noise. If you ask, open the teaching by resolving their guess: what they guessed, what's true, why.
+0. **Hook (optional, 1–2 per page or session).** A guess *before* the step, only when the learner has some footing for it and the guess would surface a likely misconception ("Tahminin ne?"; `questions.md` → Predict questions; `--source predict`). It is a hook, not an exam: one question, immediate resolution. Never a series, never for a beginner's first contact with a brand-new kind of thing. If you ask, open the teaching by resolving their guess: what they guessed, what's true, why.
 1. **Motivate.** Why do we need this node now? What problem does it solve?
 2. **Establish.** State a truth plainly, with no caveats. Build a derived step through a motivated move (Socratic or expository). For a beginner, start with a worked example.
 3. **Connect.** Make the dependency edge explicit: how does this node hang off the ones already in place?
-4. **Check.** Ask a graded question through the question protocol (`questions.md`): the idea applied to a new case, never your last sentence paraphrased. The first check on a node gets the one-line "neden?". It gets stored as a card, so it comes back for spaced review. If they miss it, the node isn't solid. Stop and fix it before building on it.
+4. **Check.** Ask a graded question through the question protocol (`questions.md`): the idea applied to a new case, never your last sentence paraphrased. The first check on a node gets the one-line "neden?". It gets stored as a card, so it comes back for spaced review. **The gate to the next node is one generative check right + its "neden?"** (an MCQ alone doesn't open it). If they miss it: one targeted repair and a variant card, then move on anyway unless the node is a root everything else rests on, or the miss was wrong+sure (dislodge that model first). Durability is layer 4's job (delayed retest), not this step's.
 5. **Do.** After a couple of nodes, hand off a small task via the `task` skill: code, a proof, a derivation, a worked problem, whatever producing the knowledge means in this topic. Understanding isn't done until they can produce it.
 
 **Natural boundaries are where moments go** (`engagement.md`): after a node clicks or a task passes, check whether status allows one.
@@ -148,25 +156,28 @@ For **every node**, whether it's a foundational truth or a derived step:
 
 If you catch yourself asserting something the learner would have to take on faith, stop. Either motivate it and confirm it lands, or ground it in something already established.
 
-## The day: read → diagnose → focus (default for new material)
+## The day (shape from `docs/method.md`; this is the chat side of it)
 
-New knowledge reaches the learner through reading first, then gets measured and repaired in chat. Steps, in order:
+New knowledge reaches the learner through a page first; chat measures, repairs and extends. The page is a real practice channel: its confident quiz answers are scheduled, its written answers and questions arrive in `tracks/<t>/inbox.md`. Steps, in order:
 
-1. **Read.** The day's lesson page (1–3 nodes, `lesson` skill), built at the previous wrap-up and read by the learner before the session (bedtime or phone reading works). No page yet (first day of a track, or it wasn't built)? Build it now and let them read it; don't narrate it in chat instead.
-2. **Diagnose.** Open with the pasted "ders sonucu" line (`lesson` → result line; diagnostic, never mastery). Then a block of **6–10 graded questions** on the page's nodes, climbing: recognition (MCQ) → own-words explain/recall (typed or dictated) → transfer / "mülakatta sorulsa". Use cards that are *not* the page's quizzes. **Confidence on every one** (`questions.md` → question 2). Grade each answer as it comes (verdict + one line); no teaching between them, so the block stays a measurement.
-3. **Sort.** Put every answer from steps 2 (page quizzes included) into four cells and show the learner the sort in one short table:
+0. **Organizer.** A track's first page is `lessons/0000-harita.html` (unscored). Nothing is graded before the learner has read it. After it: three easy generative questions set the entry mode (`method.md`), once per track.
+1. **Read.** The day's lesson page (1–3 nodes, `lesson` skill), built at the previous wrap-up and read before the session (bedtime or phone reading works). No page yet? Build it now and let them read it; don't narrate it in chat. **Novice mode: no graded question in chat before the page on that node has been read.**
+2. **Paste.** The learner pastes the result block. `tools/learn record-lesson` reads it in one command and returns `flags` (wrong+sure first), `to_grade` (their written answers) and `questions`. Speak first to the flags, then grade **2–3** written answers (`record --card <id> --correct … --answer-text "…"`), then answer their questions (one that reveals a missing node changes the map at wrap-up). Nothing else from the page is re-asked today.
+3. **Climb** (the chat block). Novice: 3–6 graded questions rising recognition → own words, inside the 70–85% band, one turn each, verdict + one line each. Expert: 3–5 generative probes, then straight to the case. Use cards that are *not* the page's quizzes. Confidence on every one (`questions.md` → question 2). **One question = one turn**: card stored and answer recorded in the same tool call as far as possible; no teaching between questions, so the block stays a measurement.
+4. **Focus.** Only on what needs it: wrong+sure first (ask their "neden?", show the case it breaks on), then wrong+unsure, then right+unsure. One reasoning step at a time, hints in steps (`task` → hint ladder); never hand the answer over. Close each repaired node with a **different** graded card. Right+sure gets no repeat today; every card stays in spaced review and a node counts as learned only after it passes again on separate days (`progress`: retained → owned → durable).
+5. **Do.** A compound case (write → model → checklist) for an expert; a small task (`task`, PRIMM order, code first in the block) for a novice.
+6. **Wrap-up** shows the 2×2 sort **once** (this is the only place it appears), builds the next page sized by the `band`, and clears the inbox.
 
    | | sure (`Eminim`) | unsure (`Emin değilim` / `Tahmin`) |
    |---|---|---|
-   | **right** | done for today | fragile: one variant later |
-   | **wrong** | **fix first**: a confident wrong model | fix second |
+   | **right** | done for today | fragile: a variant on a later day |
+   | **wrong** | **fixed first** today | fixed second |
 
    `Bilmiyorum` counts as wrong + unsure.
-4. **Focus.** Spend the rest of the block only on the cells that need it: wrong+sure first (dislodge the model: ask for their "neden?", show the case it breaks on), then wrong+unsure, then right+unsure. One reasoning step at a time, hints in steps (`task` → hint ladder) so the learner finds or adapts the answer themselves; never just hand it over. Close each repaired node with a **different** graded card (a variant, applied to a new case). Right+sure gets no repeat today, but its cards stay in spaced review like every card: a node counts as learned only after it passes again on separate days (`progress`: retained → owned → durable).
-5. **Do.** Practical tracks then run the task block (`task`), coding first within that block.
-6. **Wrap-up** builds the next page, so the next day starts again at step 1.
 
-The warm-up (`review`, 2–3 due cards) still opens the session before step 2 when cards are due; a due card from the page's nodes can count toward the diagnostic block. The probe → plan → teach phases above still decide *what* goes on the page and in which order; this shape decides how the learner meets it.
+The warm-up (`review`, 2–3 due cards, or the mixed review page when ≥ 4 are due) still opens the session before step 2 when cards are due. The probe → plan → teach phases above decide *what* goes on the page and in which order; this shape decides how the learner meets it.
+
+**Moving the level.** `tools/learn status` → Tempo → `band`. `down` (< 50% over the last 10): smaller steps, a worked example before the next question, more hints, fewer nodes on the next page. `up` (> 95%): skip the exposition, probe, go to cases, 2–3 nodes per page. Say what you are doing in one line ("Bugün biraz hızlanıyorum, son on cevabın hepsi doğruydu").
 
 ## Phone sessions
 
@@ -174,21 +185,23 @@ When the learner says they're on the phone: no coding, no API keys, no running c
 
 ## Session shape (the budget varies: 5, 15, 30 or 45 min)
 
+**Open with the position, three lines** (`engagement.md` → Position; the facts come from `tools/learn status` → Konum): where we are, which direction, what is next and why in one clause. Their name once. Then the time question if needed. Nothing else before the first question.
+
 Read the time budget in `profile.md`; if today's isn't stated, ask in one line at the start ("Bugün ne kadar vaktin var: 5, 15, 30, 45 dk?"). Then pick the shape. Plan by **number of steps**, not minutes: reply gaps stretch wall-clock.
 
 | | 5 min ("sadece tekrar") | 15 min | 30 min | 45 min |
 |---|---|---|---|---|
-| warm-up (`review`) | 2–3 due cards | 2 cards | 2–3 cards | 3 cards |
-| new material (read → diagnose → focus) | – | result line + 6 questions, focus on wrong+sure only | result line + 6–8 questions + focus | result line + 8–10 questions + focus |
+| warm-up (`review`) | 2–3 due cards | 2 cards | 2–3 cards (or the review page's block) | 3 cards (or the review page's block) |
+| new material (paste → climb → focus) | – | block + 3 questions, focus on wrong+sure only | block + 3–6 questions + focus | block + 5–8 questions + focus + case |
 | hands-on (`task`) | – | – (or one step of an open task) | one tiny task | one task + explain-back |
 | wrap-up | wrap-up lite: one-line handoff append | exit question + handoff + next page (2 min) | exit question + handoff + next page | exit question + handoff + next page + teaser |
 
 The lesson page itself is read outside these minutes.
 
 - **5 min** keeps the streak and the spacing alive on a busy day. No new material, no task. Nothing is due? Ask one card from an earlier node instead. Say plainly that a short day counts.
-- **15 min**: diagnostic block first, right after the 2-card warm-up; answers get sloppier toward the end. Focus on wrong+sure only; the rest goes into "Next step".
-- **30 min**: the full read → diagnose → focus, one tiny task.
-- **45 min**: the same, plus a full task and explain-back.
+- **15 min**: the pasted block first, right after the 2-card warm-up; answers get sloppier toward the end. Focus on wrong+sure only; the rest goes into "Next step".
+- **30 min**: the full paste → climb → focus, one tiny task.
+- **45 min**: the same, plus a full task (novice) or a compound case (expert) and explain-back.
 
 Never squeeze in "one more node" past the budget. Stopping at a clean point beats an overloaded session. Lesson pages are built *outside* the learner's time (after the goodbye at wrap-up).
 
@@ -197,6 +210,7 @@ Never squeeze in "one more node" past the budget. Stopping at a clean point beat
 - Every graded question goes through `tools/learn` (see `questions.md`). It is on disk the moment it's recorded.
 - **Checkpoint the resume point as you go.** The learner can close the window at any moment. After each finished step (warm-up done, a node checked, a task created or passed), rewrite `handoff.md` → "Next step" so it points at what comes next, in one or two lines, silently. Wrap-up then only polishes it and adds the session-log line. If a session ended without a wrap-up, the next `tools/learn status` lists it under "UNLOGGED SESSIONS": rebuild that day's log line from `attempts.jsonl` before anything else.
 - New wrong models go into the track's `misconceptions.md` the moment you see them.
+- New decisions of the learner ("bundan sonra …") and things they tell you about their life go into `learner/relationship.md` with the date.
 - New terms go into the track's `glossary.md`.
 - Node status comes from `tools/learn progress` (new → learning → checked → retained → owned → durable; learner-facing: henüz değil → işleniyor → temeli atıldı → öğrenildi ✓ → uygulandı ✓✓ → kalıcı ✓✓✓). Don't keep a copy by hand.
 - At the end: `wrap-up`.

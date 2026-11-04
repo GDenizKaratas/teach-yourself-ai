@@ -24,6 +24,8 @@ import time
 import unittest
 from pathlib import Path
 
+from html import unescape as _html_unescape
+
 REPO = Path(__file__).resolve().parents[2]
 LEARN = REPO / "tools" / "learn.py"
 DAY0 = "2026-10-20"
@@ -621,7 +623,11 @@ class TestRecordFlags(EngineCase):
         self.run_learn("record", "--card", a, "--choice", self.correct_letter(a), today=day(-3))
         variant = self.add(dict(MCQ, prompt="Which variant?"), today=day(-2))["added"][0]["id"]
         same_day = self.add(dict(MCQ, prompt="Which today?"))["added"][0]["id"]
-        ids = [c["id"] for c in load_engine(self.root).due_cards("demo")]
+        os.environ["TEACH_TODAY"] = DAY0  # the in-process call needs the same "today" as the subprocess calls
+        try:
+            ids = [c["id"] for c in load_engine(self.root).due_cards("demo")]
+        finally:
+            del os.environ["TEACH_TODAY"]
         self.assertIn(variant, ids, "a never-asked card on a node already worked on comes due from the next day")
         self.assertNotIn(probe, ids, "a probe for an untouched node stays out")
         self.assertNotIn(same_day, ids, "a card written today is asked in-session, not listed as due")
@@ -909,12 +915,15 @@ class TestLessons(EngineCase):
         self.lesson("0001-a.html", '<div class="quiz"><p>q</p></div>')
         self.lesson("0002-b.html", "<p>reading only</p>")
         self.lesson("0003-c.html", f'<div class="quiz" data-card="{cid}"></div>')
+        self.lesson("0000-harita.html", "<p>organizer: the map, no quiz</p>")
         out = self.run_learn("status").stdout
         self.assertIn("- demo: sonucu kaydedilmedi: 0003-c; quiz bağlı değil: 0001-a, 0002-b", out)
         rep = self.json_of("validate")["demo"]
         self.assertEqual(rep["errors"], [])
         self.assertTrue(any("0001-a.html: quiz without data-card" in w for w in rep["warnings"]))
         self.assertTrue(any("0002-b.html: no data-card quiz" in w for w in rep["warnings"]))
+        self.assertFalse(any("0000-harita" in w for w in rep["warnings"]), "the organizer page needs no quiz")
+        self.assertFalse(any("no organizer page" in w for w in rep["warnings"]))
         self.run_learn("record", "--card", cid, "--choice", "A", "--source", "lesson")
         self.assertNotIn("sonucu kaydedilmedi", self.run_learn("status").stdout)
         self.lesson("0004-d.html", f'<div class="quiz" data-card="{cid}"></div><div class="quiz" data-card="zz-404"></div>')
@@ -1026,14 +1035,18 @@ class TestExport(DashCase):
         self.assertEqual(d["data_warnings"], [])
         recent = d["learner"].pop("recent")
         self.assertEqual(d["learner"], {"active_track": "demo", "study_days": [day(-2), day(-1)], "streak": 2,
-                                        "started": day(-2), "gains": [], "milestones": []})
+                                        "started": day(-2), "gains": [], "milestones": [],
+                                        "band": {"n": 2, "accuracy": 0.5, "hint": "hold"}})
         row = lambda d, n, k: {"day": d, "track": "demo", "done": [], "started": [n], "slipping": [], "remembered": [],
                                "answers": k, "milestones": []}
         self.assertEqual(recent, [row(day(-1), "nash", 1), row(day(-2), "game-def", 1)], "newest first, node ids only")
         self.assertEqual([t["id"] for t in d["tracks"]], ["demo", "second"])
         t = d["tracks"][0]
         self.assertEqual(list(t), ["id", "title", "map", "next", "due", "lessons", "tasks", "files", "docs",
-                                   "last_studied", "resume"])
+                                   "last_studied", "resume", "pace", "position"])
+        self.assertEqual(t["pace"], {"nodes": 5, "done": 1, "days": 2, "per_day": 0.5, "remaining_days": 8})
+        self.assertEqual(t["position"], {"current": "nash", "path": ["nash", "pd"], "labels": {"nash": "nash", "pd": "pd"},
+                                         "done": 1, "total": 5, "learning": 1, "finished": False})
         self.assertEqual(t["docs"], [{"id": "cheatsheet", "type": "cheatsheet", "title": "Özet", "path": "tracks/demo/cheatsheet.md"},
                                      {"id": "glossary", "type": "glossary", "title": "Sözlük", "path": "tracks/demo/glossary.md"},
                                      {"id": "map", "type": "map", "title": "Harita (metin)", "path": "tracks/demo/map.md"}])
@@ -1116,7 +1129,8 @@ class TestExport(DashCase):
     def test_empty_root_unknowns_are_null(self):
         d = self.json_of("export", "--json")
         self.assertEqual(d["learner"], {"active_track": None, "study_days": [], "streak": 0, "started": None,
-                                        "gains": [], "milestones": [], "recent": []})
+                                        "gains": [], "milestones": [], "recent": [],
+                                        "band": {"n": 0, "accuracy": None, "hint": "hold"}})
         self.assertEqual(d["tracks"], [])
 
     def test_next_rule(self):
@@ -1519,6 +1533,19 @@ class TestRefresh(DashCase):
         self.assertEqual(self.json_of("refresh")["lessons_updated"], [], "idempotent")
         self.assertEqual(with_map.stat().st_mtime_ns, mtime, "unchanged lesson is not rewritten")
         self.assertEqual(self.run_learn("refresh", "--quiet").stdout, "")
+        # the position box: data-pos is set from the export's position, other attributes stay, idempotent
+        slot = self.lesson("0000-harita.html", '<title>Harita</title><div class="position-slot" data-style="bar" '
+                           'data-pos=\'{"old": 1}\'></div><p>son</p>')
+        self.assertEqual(self.json_of("refresh")["lessons_updated"], ["tracks/demo/lessons/0000-harita.html"])
+        text = slot.read_text(encoding="utf-8")
+        m = re.search(r'<div class="position-slot" data-style="bar" data-pos=\'([^\']*)\'></div><p>son</p>$', text)
+        self.assertIsNotNone(m, text)
+        pos = json.loads(_html_unescape(m.group(1)))
+        self.assertEqual(pos, {"track": "demo", "done": 1, "total": 5, "learning": 1, "current": "nash",
+                               "path": ["nash", "pd"], "labels": {"nash": "nash", "pd": "pd"}})
+        self.assertEqual(text.count("data-pos="), 1)
+        self.assertEqual(self.json_of("refresh")["lessons_updated"], [], "idempotent")
+        self.assertEqual(slot.read_text(encoding="utf-8"), text)
 
     def test_dashboard_renders_from_the_export_alone(self):
         self.build()
@@ -1690,6 +1717,212 @@ class TestLayouts(EngineCase):
         self.assertIn("<li><strong>a</strong> <code>&lt;b&gt;</code></li>", h)
         self.assertIn('<a href="https://e.org" target="_blank" rel="noopener">s</a> r', h)
         self.assertIn("<pre><code>&lt;raw&gt;</code></pre>", h)
+
+
+# ── method update 2026-11: record-lesson, review page, Kişi / Konum / Tempo / Inbox, band, dull ──────────
+
+class TestRecordLesson(EngineCase):
+    def setup_cards(self):
+        self.new_track()
+        self.mcq = self.add(MCQ)["added"][0]["id"]
+        self.mcq2 = self.add(dict(MCQ, node="n3", prompt="Second?"))["added"][0]["id"]
+        self.rec = self.add(RECALL)["added"][0]["id"]
+        self.run_learn("use", "demo")
+
+    def test_v3_block_schedules_and_files_inbox(self):
+        self.setup_cards()
+        right, wrong = self.correct_letter(self.mcq), next(L for L in "ABC" if L != self.correct_letter(self.mcq2))
+        block = (f"ders sonucu 0003 v3\n"
+                 f'mcq: {self.mcq}={right}/2 "çünkü öyle"; {self.mcq2}={wrong}/3\n'
+                 f"yaz: {self.rec}/2 | Nash dengesi ⏎ ikinci satır\n"
+                 f"soru: Peki iki denge varsa?\n"
+                 f"süre: {self.mcq}=58s\n")
+        res = self.json_of("record-lesson", stdin=block)
+        self.assertEqual((res["lesson"], res["format"]), ("0003", "v3"))
+        self.assertEqual([r["card"] for r in res["recorded"]], [self.mcq, self.mcq2])
+        self.assertEqual([r["correct"] for r in res["recorded"]], ["yes", "no"])
+        self.assertTrue(res["flags"][0].startswith(f"{self.mcq2} (n3): high-confidence error"), res["flags"])
+        self.assertEqual([t["card"] for t in res["to_grade"]], [self.rec])
+        self.assertEqual(res["to_grade"][0]["answer_text"], "Nash dengesi\nikinci satır")
+        self.assertEqual(res["questions"], ["Peki iki denge varsa?"])
+        self.assertEqual(res["inbox"], ["tracks/demo/inbox.md"])
+        rows = self.read_rows(self.root / "tracks/demo/attempts.jsonl")
+        self.assertEqual(len(rows), 2)
+        self.assertEqual({k: rows[0][k] for k in ("source", "scheduled", "confidence", "choice", "answer_text", "seconds", "delayed")},
+                         {"source": "lesson", "scheduled": True, "confidence": 2, "choice": right, "answer_text": "çünkü öyle",
+                          "seconds": 58, "delayed": False})
+        self.assertNotIn("seconds", rows[1])
+        cards = {c["id"]: c for c in self.read_rows(self.root / "tracks/demo/cards.jsonl")}
+        self.assertEqual(cards[self.mcq]["srs"]["last"], DAY0, "scheduled")
+        self.assertEqual(cards[self.mcq]["srs"]["due"], day(1))
+        self.assertEqual(cards[self.mcq2]["srs"]["lapses"], 1)
+        self.assertIsNone(cards[self.rec]["srs"].get("last"), "yaz: is not graded by the engine")
+        inbox = (self.root / "tracks/demo/inbox.md").read_text(encoding="utf-8")
+        self.assertEqual(inbox, f"# Inbox — sayfadan gelenler\n\n## {DAY0} · ders 0003\n"
+                                f"- yaz {self.rec} (eminlik 2): Nash dengesi / ikinci satır\n- soru: Peki iki denge varsa?\n")
+        # mastery: a scheduled lesson row counts like a chat answer
+        prog = self.json_of("progress")["demo"]["nodes"]
+        self.assertEqual((prog["n1"]["level"], prog["n1"]["attempts"]), ("checked", 1))
+        self.assertEqual(prog["n3"]["level"], "struggling")
+        self.assertEqual(self.json_of("signals")["band"], {"n": 2, "accuracy": 0.5, "hint": "hold"})
+        out = self.run_learn("status").stdout
+        self.assertIn("## Inbox", out)
+        self.assertIn("- demo: 1 yazı, 1 soru (tracks/demo/inbox.md)", out)
+        self.assertNotIn("sonucu kaydedilmedi", out)
+        L = load_engine(self.root)
+        self.assertEqual(L.scan_contract(), [], "rows match schemas/")
+        # a second paste appends a second section; dont-know and a legacy-style item without a reason
+        res = self.json_of("record-lesson", stdin=f"ders sonucu 0004 v3\nmcq: {self.mcq}=?/1\nsoru: a ⏎ b", today=day(1))
+        self.assertEqual(res["recorded"][0]["chosen"], "dont-know")
+        self.assertTrue(self.read_rows(self.root / "tracks/demo/attempts.jsonl")[-1]["dont_know"])
+        self.assertIn(f"\n## {day(1)} · ders 0004\n- soru: a / b\n", (self.root / "tracks/demo/inbox.md").read_text(encoding="utf-8"))
+
+    def test_legacy_line_stays_diagnostic(self):
+        self.setup_cards()
+        before = (self.root / "tracks/demo/cards.jsonl").read_bytes()
+        res = self.json_of("record-lesson", stdin=f'ders sonucu 0002: {self.mcq}=A {self.mcq2}=B/3 "neden"')
+        self.assertEqual(res["format"], "legacy")
+        self.assertIn("diagnosis only", res["note"])
+        self.assertEqual((self.root / "tracks/demo/cards.jsonl").read_bytes(), before, "not scheduled")
+        rows = self.read_rows(self.root / "tracks/demo/attempts.jsonl")
+        self.assertEqual([(r["source"], r.get("scheduled"), r["confidence"]) for r in rows], [("lesson", None, None), ("lesson", None, 3)])
+        self.assertEqual(rows[1]["answer_text"], "neden")
+        self.assertEqual(self.json_of("progress")["demo"]["nodes"]["n1"]["attempts"], 0, "not mastery evidence")
+        self.assertFalse((self.root / "tracks/demo/inbox.md").exists())
+        # `record --source lesson` keeps its old behaviour too
+        self.json_of("record", "--card", self.mcq, "--choice", "A", "--confidence", "3", "--source", "lesson")
+        self.assertEqual((self.root / "tracks/demo/cards.jsonl").read_bytes(), before)
+
+    def test_questions_only_block_and_bad_ids(self):
+        self.setup_cards()
+        res = self.json_of("record-lesson", stdin="ders sonucu 0000 v3\nsoru: Harita neden böyle?\n")
+        self.assertEqual((res["recorded"], res["to_grade"], res["questions"]), ([], [], ["Harita neden böyle?"]))
+        self.assertIn("- soru: Harita neden böyle?", (self.root / "tracks/demo/inbox.md").read_text(encoding="utf-8"))
+        r = self.run_learn("record-lesson", stdin=f"ders sonucu 0003 v3\nmcq: {self.mcq}=A/2; zz-404=B/1", check=False)
+        self.assertNotEqual(r.returncode, 0)
+        self.assertEqual(self.read_rows(self.root / "tracks/demo/attempts.jsonl"), [], "nothing written when an id is unknown")
+        r = self.run_learn("record-lesson", stdin="hello", check=False)
+        self.assertNotEqual(r.returncode, 0)
+
+    def test_review_block_spans_tracks(self):
+        self.setup_cards()
+        self.new_track("second")
+        other = self.add(dict(MCQ, node="x1"), track="second")["added"][0]["id"]
+        rec2 = self.add(dict(RECALL, node="x2"), track="second")["added"][0]["id"]
+        self.run_learn("use", "demo")  # new-track made `second` active
+        block = (f"tekrar sonucu {DAY0} v3\nmcq: {self.mcq}={self.correct_letter(self.mcq)}/3; "
+                 f"{other}={self.correct_letter(other, 'second')}/1\nyaz: {rec2}/3 | bir şey\nsoru: neden?\n")
+        res = self.json_of("record-lesson", stdin=block)
+        self.assertEqual(res["review"], DAY0)
+        self.assertEqual(sorted(res["inbox"]), ["tracks/demo/inbox.md", "tracks/second/inbox.md"])
+        self.assertIn("- soru: neden?", (self.root / "tracks/demo/inbox.md").read_text(encoding="utf-8"), "questions → active track")
+        self.assertIn(f"- yaz {rec2} (eminlik 3): bir şey", (self.root / "tracks/second/inbox.md").read_text(encoding="utf-8"))
+        for t in ("demo", "second"):
+            row = self.read_rows(self.root / f"tracks/{t}/attempts.jsonl")[0]
+            self.assertEqual(row["source"], "review-page")
+            self.assertNotIn("scheduled", row, "review-page rows are scheduled by definition")
+        self.assertEqual(self.json_of("progress")["second"]["nodes"]["x1"]["level"], "checked")
+        self.assertTrue(any("correct but guessed" in f for f in res["flags"]))
+
+
+class TestReviewPage(DashCase):
+    def test_due_html_writes_a_page_without_names(self):
+        self.build()
+        self.run_learn("record", "--card", self.rec, "--correct", "no", today=day(-1))
+        res = self.json_of("due", "--html")
+        path = self.root / res["written"]
+        self.assertEqual(res["written"], f"learner/reviews/review-{DAY0}.html")
+        self.assertEqual(res["cards"], 2)
+        text = path.read_text(encoding="utf-8")
+        self.assertTrue(text.startswith("<!doctype html>\n<html lang=\"tr\">"))
+        self.assertIn('href="../../assets/style.css"', text)
+        self.assertIn('src="../../assets/components.js"', text)
+        self.assertIn(f'<main data-review="{DAY0}">', text)
+        self.assertIn("Konu adı yok: hangi fikrin geçerli olduğunu sen bul.", text)
+        self.assertIn(f'<div class="quiz" data-card="{self.mcq}" data-answer=', text)
+        self.assertIn(f'<div class="write" data-card="{self.rec}">\n  <p class="q">SECRET-PROMPT-2</p>\n</div>', text)
+        self.assertTrue(text.rstrip().endswith('<div class="score"></div>\n</main>\n</body>\n</html>'))
+        for name in ("Demo Konusu", "game-def", "nash", "demo", "SECRET-ANSWER", "m-secret"):
+            self.assertNotIn(name, text, f"the review page names {name}")
+        self.assertIn('data-why="SECRET-EXPL-1"', text, "feedback from the explanation")
+        out = self.run_learn("status").stdout
+        self.assertIn(f"- tekrar sayfası learner/reviews/review-{DAY0}.html: sonucu kaydedilmedi", out)
+        self.json_of("record-lesson", stdin=f"tekrar sonucu {DAY0} v3\nmcq: {self.mcq}=A/2")
+        self.assertNotIn("tekrar sayfası", self.run_learn("status").stdout)
+
+    def test_cards_html_emits_write_boxes(self):
+        self.build()
+        out = self.run_learn("cards", "--track", "demo", "--html").stdout
+        self.assertIn(f'<div class="write" data-card="{self.rec}">', out)
+        self.assertNotIn("<details", out)
+        self.assertNotIn("SECRET-ANSWER", out, "the reference answer is never on the page")
+        self.assertIn('data-why="TODO: neden doğru (SECRET-EXPL-1…)"', out)
+        self.assertTrue(out.rstrip().endswith('<div class="score"></div>'))
+
+
+class TestStatusBlocks(DashCase):
+    REL = ("---\nname: Deniz\naddress_as: Deniz\nclosing: yarın görüşürüz\ntone: direct-critical\nhumour: light\n"
+           "rhythm: hafta içi akşam · 15–45 dk\n---\n# Relationship\n\n## Kararları\n- 2026-10-20: ısınma 2–3 kart.\n\n"
+           "## Hayatından (öğrencinin söyledikleri)\n- {d2}: AI Engineering mülakatı → sonrasında nasıl geçti diye sor.\n"
+           "- {d0}: bugün bir şey\n- {dm}'a kadar: eski madde\n\n## Ne iyi geldi\n- + x\n")
+
+    def test_kisi_block(self):
+        self.build()
+        self.assertIn("learner: relationship.md yok → onboarding'deki 3 soruyla oluştur", self.run_learn("status").stdout)
+        (self.root / "learner/relationship.md").write_text(self.REL.format(d2=day(2), d0=DAY0, dm=day(-3)), encoding="utf-8")
+        out = self.run_learn("status").stdout
+        self.assertIn("## Kişi (learner/relationship.md)\n"
+                      '- Deniz · hitap: Deniz · kapanış: "yarın görüşürüz" · ton: direct-critical · ritim: hafta içi akşam · 15–45 dk\n'
+                      f"- son oturum: dün ({day(-1)}) · seri: 2 gün\n"
+                      f"- hayatından: {day(2)} AI Engineering mülakatı (2 gün sonra) → sonrasında nasıl geçti diye sor.\n"
+                      f"- hayatından: {DAY0} bugün bir şey (bugün)\n"
+                      f"- hayatından: {day(-3)}'a kadar eski madde (geçti → sor, sonra satırı sil)\n"
+                      "- öneri hakkı: bugün 1 (henüz öneri yok) | yanında olma anı: bugün 1\n", out)
+        self.run_learn("moment", "--kind", "advice", "--note", "x", today=day(-1))
+        self.run_learn("moment", "--kind", "presence", "--note", "y")
+        self.assertIn(f"- öneri hakkı: bugün 0 (son: {day(-1)}, dün) | yanında olma anı: bugün 0 (kullanıldı)",
+                      self.run_learn("status").stdout)
+        self.assertIn("- öneri hakkı: bugün 1 (son öneri 4 gün önce) | yanında olma anı: bugün 1",
+                      self.run_learn("status", today=day(3)).stdout)
+        L = load_engine(self.root)
+        self.assertEqual(L.scan_contract(), [], "advice / presence moments match the schema")
+
+    def test_konum_and_tempo(self):
+        self.build()
+        out = self.run_learn("status").stdout
+        self.assertIn("## Konum (demo)\n- şu an: nash · 1/5 düğüm işlendi (checked+) · 1 öğreniliyor\n- yön: nash → pd\n"
+                      "- sıradaki: pd — T > R > P > S.\n", out)
+        self.assertIn("## Tempo\n- pace: 5 düğümden 1 işlendi · 2 oturum\n- band: son 2 planlı cevapta doğruluk 0.5 → hold (tempoyu koru)\n", out)
+        self.assertNotIn("(dull", out)
+        m = self.root / "tracks/demo/map.md"
+        m.write_text(m.read_text(encoding="utf-8") + "\n<!-- dull: nash, pd -->\n", encoding="utf-8")
+        out = self.run_learn("status").stdout
+        self.assertIn('- sıradaki düğüm temel-ama-sıkıcı (dull: nash): bir "yanında olma" cümlesi uygun', out)
+        nodes = {n["id"]: n for n in self.json_of("map", "--track", "demo", "--json")["nodes"]}
+        self.assertTrue(nodes["nash"].get("dull") and nodes["pd"].get("dull"))
+        self.assertNotIn("dull", nodes["ordinal"])
+        m.write_text(m.read_text(encoding="utf-8") + "<!-- dull: nope -->\n", encoding="utf-8")
+        r = self.run_learn("validate", "--track", "demo", check=False)
+        self.assertEqual(r.returncode, 1)
+        errors = json.loads(r.stdout)["demo"]["errors"]
+        self.assertTrue(any(re.fullmatch(r"demo: map\.md line \d+: dull: 'nope' is not in the node table", e) for e in errors), errors)
+        rep = self.json_of("validate", "--track", "second")
+        self.assertTrue(any("no organizer page" in w for w in rep["second"]["warnings"]))
+
+    def test_band_hints(self):
+        self.new_track()
+        cid = self.add(RECALL)["added"][0]["id"]
+        L = load_engine(self.root)
+        row = lambda ok: {"kind": "card", "correct": "yes" if ok else "no"}
+        self.assertEqual(L.band([]), {"n": 0, "accuracy": None, "hint": "hold"})
+        self.assertEqual(L.band([row(False)] * 6 + [row(True)] * 4)["hint"], "down")
+        self.assertEqual(L.band([row(True)] * 9)["hint"], "hold", "a full window is needed for up")
+        self.assertEqual(L.band([row(True)] * 10)["hint"], "up")
+        self.assertEqual(L.band([row(False)] + [row(True)] * 10), {"n": 10, "accuracy": 1.0, "hint": "up"}, "last 10 only")
+        for i in range(3):
+            self.run_learn("record", "--card", cid, "--correct", "no", today=day(i))
+        self.run_learn("record", "--card", cid, "--correct", "yes", "--source", "predict", today=day(3))  # diagnostic: not in the band
+        self.assertEqual(self.json_of("signals")["band"], {"n": 3, "accuracy": 0.0, "hint": "down"})
 
 
 if __name__ == "__main__":

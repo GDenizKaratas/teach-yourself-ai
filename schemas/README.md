@@ -40,6 +40,13 @@ Schemas are JSON Schema 2020-12. The engine checks them with a small built-in va
 | `tracks/<t>/cheatsheet.md` | one `## <node id or title>` section per done node | `status` → Notes gaps |
 | `tracks/<t>/handoff.md` | `## Next step`, then `## Öğrenci için` (one line shown on the dashboard), then `## Session log` with lines starting `- YYYY-MM-DD` | `status` (resume point, UNLOGGED SESSIONS) |
 | `tracks/<t>/intake.md` | why the track exists: request, goal answers, diagnosis, proposal, decision | `validate` |
-| `tracks/<t>/lessons/NNNN-*.html` | a `<!-- lesson-map: --track t --nodes a,b -->` comment and `data-card` quizzes | `validate`, `refresh` |
+| `tracks/<t>/lessons/NNNN-*.html` | a `<!-- lesson-map: --track t --nodes a,b -->` comment and `data-card` quizzes (`.quiz` for option cards, `.write` for open answers); `0000-*.html` is the organizer page: no quiz expected, no result awaited | `validate`, `refresh` |
+| `tracks/<t>/inbox.md` | what a lesson / review page sent that the engine does not grade: one `## YYYY-MM-DD · ders NNNN` (or `· tekrar YYYY-MM-DD`) section per pasted block with `- yaz <card> (eminlik N): text` and `- soru: text` lines. Written by `record-lesson`; the tutor grades 2–3 of the writes in chat (`record --card … --correct …`), answers / files the questions, then deletes the section | `status` → Inbox |
+| `learner/relationship.md` | frontmatter `key: value` lines (`name`, `address_as`, `closing`, `tone`, `rhythm`, …) between `---`; a `## Hayatından` section with `- YYYY-MM-DD: text` / `- YYYY-MM-DD'a kadar: text` lines | `status` → Kişi |
+| `learner/reviews/review-YYYY-MM-DD.html` | the mixed review page `due --html` writes (no topic or node names); its result comes back as a `tekrar sonucu YYYY-MM-DD v3` block | `status` (result not recorded yet) |
 
 Everything else in a track (`misconceptions.md`, `glossary.md`, `RESOURCES.md`, `README.md`) is free prose for the tutor. `misconceptions.md` must define every `m-…` id that a card uses (checked by `validate`).
+
+## Scheduled page answers
+
+`record --source lesson|predict` rows are diagnostic: never rescheduled, never mastery evidence. A **v3 result block** pasted from a lesson or review page goes through `record-lesson`: every `mcq:` item carries a confidence, so the card **is** scheduled (`schedule(quality(correct, confidence))`) and the row says `scheduled: true` (source `lesson`) or has source `review-page`. Mastery, signals, the band and today's misses count such rows like chat answers; only rows of a diagnostic source *without* `scheduled: true` stay out (`is_diagnostic` in the engine). A block without `v3` is recorded the old way (diagnostic).

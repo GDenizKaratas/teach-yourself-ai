@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{Konu başlığı}} · Harita</title>
+<!-- Ders 0 "Harita" (organizer): konunun bütün resmi, her düğüm için iki cümle + "neden var?" + bir kanca sorusu.
+     Puanlanan hiçbir şey YOK (data-card'lı quiz ya da .write yok): acemi öğrenci sayfayı okumadan puanlı soru
+     görmez (docs/method.md). `validate` 0000 için "no data-card quiz" uyarısı vermez; `status` sonucunu beklemez.
+     Dosya: tracks/<track>/lessons/0000-harita.html (repo köküne üç seviye aşağıda; assets yolu ../../../). -->
+<link rel="stylesheet" href="../../../assets/style.css">
+<script src="../../../assets/components.js"></script>
+</head>
+<body>
+<!-- 1. Üst çubuk: derslerle aynı. Konu başlığı = track README'nin başlığı. -->
+<header class="lesson-bar">
+  <div class="lb-inner">
+    <a class="lb-back" href="../../../learner/dashboard.html">← Pano</a>
+    <span class="lb-title">teach · {{Konu başlığı}} · <b>Ders 0</b></span>
+    <span class="lb-step" aria-live="polite"></span>
+    <button class="theme-btn" type="button">◐ Tema</button>
+  </div>
+  <div class="lb-progress" aria-hidden="true"><i></i></div>
+</header>
+<main data-lesson="0000">
+
+<p class="kicker">Ders 0 · Harita</p>
+<h1>{{Konu başlığı}}: bütün resim</h1>
+<p class="subtitle">{{Konunun cevapladığı tek soru; öğrencinin hedefine bağla.}}</p>
+
+<!-- 2. Hedef kartı: bu sayfanın tek sonucu sabittir. Süre dışında meta yazma. -->
+<section class="goal" aria-label="Dersin hedefi">
+  <div class="ui-label">Bu sayfanın sonunda</div>
+  <p class="goal-text">Konunun bütün resmini ve her parçanın neden var olduğunu görebileceksin.</p>
+  <div class="goal-meta">
+    <span><b>~10</b>dk</span>
+  </div>
+</section>
+
+<!-- 2b. Konum görseli: Harita'da piramit (temel altta, hedef tepede). data-pos'u `tools/learn refresh` doldurur
+     (boşken görünmez); elle yazma. Başka bir biçim istersen data-style="path" ya da "ring" (components.js 9b). -->
+<div class="position-slot" data-style="pyramid"></div>
+
+<!-- 3. TAM harita: --nodes bütün düğüm id'leri (map.md sırasıyla). Yorumu ve boş SVG'yi yaz; `tools/learn refresh`
+     SVG'yi doldurur ve güncel tutar. Sarı yalnızca konunun gerçek sıradaki düğümü. -->
+<!-- lesson-map: --track {{track}} --nodes {{node-1}},{{node-2}},{{node-3}} -->
+<div class="lmap-slot" data-track="{{track}}" data-nodes="{{node-1}},{{node-2}},{{node-3}}"><svg class="lmap"></svg></div>
+
+<p>{{İki-üç cümle: parçalar hangi sırayla geliyor ve birbirine nasıl bağlanıyor. Okuma yönü: yukarıdan aşağı.}}</p>
+
+<!-- 4. Her düğüm bir <section class="step">; map.md sırasıyla, hiçbiri atlanmaz. İçerik:
+       - h2: düğümün adı (glossary'deki terim; dil kuralına göre İngilizce/Türkçe)
+       - 2 cümlelik öğrenci tanımı (map.md'deki "unconditional truth"ten, jargonsuz)
+       - "Neden var?" tek satır: bu parça olmasa ne bozulur / hangi soru cevapsız kalır
+       - TEK kanca sorusu: <details class="recall"><summary>Kanca: …?</summary><p>…</p></details>
+         Kanca merak uyandırır, cevabı kısa ve tam; data-card YOK, puanlanmaz. Quiz koyma.
+     "ADIM i" etiketini JS yazar; data-title çipte görünen kısa ad. -->
+<section class="step" data-title="{{Düğüm 1 kısa ad}}">
+<h2>{{Düğüm 1 adı}}</h2>
+<p>{{İki cümle: nedir, neye benzer.}}</p>
+<p><b>Neden var?</b> {{Bu parça olmasa ne bozulur.}}</p>
+<details class="recall">
+  <summary>Kanca: {{merak uyandıran soru}}?</summary>
+  <p>{{Kısa, tam cevap; bir sonraki derste açılacak.}}</p>
+</details>
+</section>
+
+<section class="step" data-title="{{Düğüm 2 kısa ad}}">
+<h2>{{Düğüm 2 adı}}</h2>
+<p>{{İki cümle.}}</p>
+<p><b>Neden var?</b> {{tek satır}}</p>
+<details class="recall">
+  <summary>Kanca: {{soru}}?</summary>
+  <p>{{cevap}}</p>
+</details>
+</section>
+
+<section class="step" data-title="{{Düğüm 3 kısa ad}}">
+<h2>{{Düğüm 3 adı}}</h2>
+<p>{{İki cümle.}}</p>
+<p><b>Neden var?</b> {{tek satır}}</p>
+<details class="recall">
+  <summary>Kanca: {{soru}}?</summary>
+  <p>{{cevap}}</p>
+</details>
+</section>
+
+<!-- 5. Kapanış: sıradaki ders hangi düğümden başlıyor ve neden oradan. Soru kutusu: öğrencinin okurken takıldığı
+     yerler; components.js textarea ekler, boş olmayan her satır blokta "soru:" satırı olur ("ders sonucu 0000 v3"
+     başlığıyla; puanlı öğe yok, sadece sorular). Kopyala düğmesi ilk satır yazılınca alttan çıkar. -->
+<section class="step" data-title="Sırada ne var">
+<h2>Sırada ne var</h2>
+<p>{{Ders 1 hangi düğümle başlıyor, neden oradan; öğrencinin hedefine ilk somut katkı ne olacak.}}</p>
+<div class="ask-box"></div>
+</section>
+
+<div class="source">
+  <span class="label">Birincil kaynak</span>
+  <a href="{{url}}">{{Yazar, başlık}}</a> ({{hangi bölüm, ne kadar sürer}}). {{Neden bu kaynak.}}
+</div>
+
+<nav class="lesson-nav">
+  <span class="disabled">← Harita</span>
+  <a href="{{0001-slug}}.html">Ders 1: {{başlık}} →</a>
+</nav>
+
+</main>
+</body>
+</html>

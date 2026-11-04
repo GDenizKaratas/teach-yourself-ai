@@ -10,6 +10,8 @@
       "Bash(uv sync:*)",
       "Bash(open tracks/*)",
       "Bash(open learner/dashboard.html)",
+      "Bash(open learner/reviews/*)",
+      "Bash(start learner/reviews/*)",
       "Bash(start tracks/*)",
       "Bash(start learner/dashboard.html)",
       "Edit(./tracks/**)",

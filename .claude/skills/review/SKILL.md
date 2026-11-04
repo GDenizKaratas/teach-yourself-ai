@@ -7,7 +7,12 @@ description: Spaced-repetition review of cards that are due. Use at the start of
 
 The goal is retrieval spread over time, the most reliable way to make learning last. Keep it brisk: a warm-up is **at most 2–3 short cards**, a few minutes. It is a reminder, not a lesson. Cards left due roll over to the next session; the scheduler handles that.
 
-## Flow
+## Two channels
+
+- **≤ 3 cards due** → chat warm-up (the flow below).
+- **≥ 4 cards due** → the **mixed review page**: `tools/learn due --html --limit 8` writes `learner/reviews/review-YYYY-MM-DD.html` (tracks interleaved, **no topic or node names on the page**, so the learner must recognize which idea applies — that is the point). Open it for them (`open learner/reviews/review-….html`), they answer there with confidence, paste the `tekrar sonucu … v3` block, and `tools/learn record-lesson` schedules everything in one command (`source: review-page`). Then speak only to the flags (wrong+sure) and grade the `.write` answers from `to_grade` as in the `lesson` skill. Wrap-up builds tomorrow's page when ≥ 4 will be due (`due --ahead 1`). A 5-minute day can be the page alone.
+
+## Flow (chat warm-up)
 
 1. `tools/learn due --limit 3`. The script returns at most one card per node (mastery is per node), most overdue first, interleaving tracks. Keep its order. A handoff may name one card it wants first; the rest come from the script. A correct answer moves the node's other due cards forward by itself.
 2. Say one line to frame it ("Önce kısa bir ısınma: 2 soru."). Nothing more.
@@ -34,9 +39,9 @@ After a card has been answered correctly twice, the learner may be recognizing t
 
 Prefer open `recall`/`explain`/`predict-output` types for nodes that are already checked, and always when `tools/learn signals` shows a high `generation_gap` (they recognize much better than they produce). Tag every new card with `cue` and `mode` (`questions.md` → Card types).
 
-## A lesson result line is pasted ("ders sonucu 0003: pts-010=B …")
+## A result block is pasted ("ders sonucu … v3" / "tekrar sonucu … v3" / old one-line)
 
-That comes from a lesson page's quiz. Record each with `tools/learn record --card <id> --choice <letter> --source lesson` (diagnostic only: no rescheduling, no mastery). Say in one line what slipped, then **ask a different card on each missed node in chat**, graded normally. Details in the `lesson` skill.
+`tools/learn record-lesson` with the block on stdin, then the `lesson` skill → "When a result block is pasted". v3 blocks are scheduled; old one-line formats stay diagnostic.
 
 ## A 5-minute day ("sadece tekrar")
 

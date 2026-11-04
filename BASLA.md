@@ -33,7 +33,12 @@ Claude nerede kaldığını kendisi hatırlar ve kısa bir tekrarla başlar. Her
 | Takıldığında | ipucu |
 | Özet / kopya kağıdı | cheatsheet çıkaralım |
 | İlerlemeni tek sayfada görmek | pano |
+| Kendi kaynağını kullandırmak | şu kaynağı kullan: … |
 | Bitirmek | bugünlük bu kadar |
+
+## Öğretmenin seni tanıması
+
+İlk gün sana nasıl sesleneceğini, nasıl bir öğretmen istediğini (doğrudan ve eleştirel / sıcak / nötr) ve nasıl vedalaşacağınızı sorar; `learner/relationship.md` dosyasına yazar. Sonradan verdiğin kararlar ("ısınma en fazla iki soru olsun") ve anlattıkların ("Cuma sınavım var") da oraya girer: Claude bunları hatırlar, kararını değiştirmeden önce sorar, sınavını sonra sorar. Dosyayı kendin de düzeltebilirsin.
 
 ## Pano
 
@@ -41,7 +46,11 @@ Claude nerede kaldığını kendisi hatırlar ve kısa bir tekrarla başlar. Her
 
 ## Ders sayfaları
 
-Bazı konular için Claude sana okunacak kısa bir **ders sayfası** hazırlar: `tracks/<konu>/lessons/` içinde `.html` dosyaları. Claude sayfayı tarayıcıda **kendisi açar**. Açılmazsa Claude'un verdiği bağlantıya tıkla, ya da dosyaya sağ tıkla → "Reveal in Finder" (Mac) / "Reveal in File Explorer" (Windows), sonra çift tıklayıp tarayıcıda aç. Sayfanın sonunda kısa sorular var; hepsini cevaplayınca çıkan **"ders sonucu …" satırını kopyalayıp sohbete yapıştır**. Böylece Claude neyi bildiğini, neyi karıştırdığını görür. Kaynaklar ve "birincil kaynak" bağlantıları, istersen daha derine inmen için.
+Her konu bir **harita sayfasıyla** başlar (`lessons/0000-harita.html`): bütün konuyu bir bakışta görürsün, puan yok, sadece oku. Sonra her gün kısa bir **ders sayfası** gelir: `tracks/<konu>/lessons/` içinde `.html` dosyaları. Claude sayfayı tarayıcıda **kendisi açar**. Açılmazsa Claude'un verdiği bağlantıya tıkla, ya da dosyaya sağ tıkla → "Reveal in Finder" (Mac) / "Reveal in File Explorer" (Windows), sonra çift tıklayıp tarayıcıda aç.
+
+Sayfada üç tür şey var: **sorular** (şıkkı seç, ne kadar emin olduğunu işaretle), **yazı kutuları** (kendi cümlelerinle yaz, bakmadan) ve en altta **"sormak istediğim"** kutusu (aklına takılan her şey). Hepsi bitince altta çıkan **Kopyala** düğmesine bas ve sohbete yapıştır: Claude tek seferde hepsini okur, yanlış ama emin olduğun yerlerden başlar, yazdıklarından iki-üçünü değerlendirir, sorularını cevaplar. Yazdıkların sayfayı kapatsan da kaybolmaz. Bazı günler Claude bir **tekrar sayfası** açar: karışık sorular, konu adı yok; hangi fikrin geçerli olduğunu sen bulursun.
+
+Her sayfanın başında nerede olduğunu gösteren küçük bir çizim var (yol, piramit ya da halka); sohbette de her oturum üç satırla başlar ve biter: neredeyiz, hangi yöne, sıradaki ne ve neden.
 
 ## Dosyalar nerede?
 

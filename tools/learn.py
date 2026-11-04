@@ -62,8 +62,9 @@ MIN_EASE = 1.3
 CUES = {"lesson", "adjacent", "far"}            # card "cue": how far the prompt is from how it was taught (absent = lesson)
 MODES = {"recall", "discriminate", "compose"}   # card "mode": what the card exercises
 GENERATIVE_TYPES = {"recall", "explain", "predict-output", "spot-the-bug"}  # the learner produces, not recognizes
-UNSCHEDULED_SOURCES = {"lesson", "predict"}     # diagnostic answers: never rescheduled, never mastery evidence
+UNSCHEDULED_SOURCES = {"lesson", "predict"}     # diagnostic answers (unless the row says scheduled: true, see is_diagnostic)
 SLUG_RE = re.compile(r"[a-z0-9][a-z0-9-]*")
+ORGANIZER_PREFIX = "0000-"                       # lessons/0000-*.html: the track's "Harita" page, no graded quiz expected
 
 # Honest mastery: attempts on/after this local date need stronger evidence for retained/owned (see node_progress).
 # Attempts before it keep the old rules, so nothing already earned disappears.
@@ -127,6 +128,18 @@ def rel(path: Path) -> str:
         return Path(path).resolve().relative_to(ROOT).as_posix()
     except ValueError:
         return str(path)
+
+
+def is_diagnostic(row: dict) -> bool:
+    """A card answer that is NOT evidence of retention: `record --source lesson|predict` rows (diagnostic: which
+    distractor, a guess before teaching). A lesson-page answer recorded by `record-lesson` from a v3 block carries
+    `scheduled: true` and counts like a chat answer; `review-page` rows always count."""
+    return row.get("source") in UNSCHEDULED_SOURCES and not row.get("scheduled")
+
+
+def is_organizer(stem: str) -> bool:
+    """lessons/0000-*.html is the organizer ("Harita") page: it needs no data-card quiz and no recorded result."""
+    return stem.startswith(ORGANIZER_PREFIX)
 
 
 def track_dir(track: str) -> Path:
@@ -458,6 +471,8 @@ def lesson_status(track: str) -> tuple[list[str], list[str]]:
     recorded = {at.get("card") for at in read_jsonl(TRACKS / track / "attempts.jsonl") if at.get("source") == "lesson"}
     unrecorded, unbound = [], []
     for html in sorted(d.glob("*.html")):
+        if is_organizer(html.stem):
+            continue
         refs = lesson_card_ids(html.read_text(encoding="utf-8"))
         if not refs:
             unbound.append(html.stem)
@@ -523,6 +538,7 @@ def check_card(card: dict, track: str, miscs: set[str]) -> tuple[list[str], list
 MAP_FORMAT_MARK = "<!-- map-format: 1 -->"  # maps carrying it (new tracks) get strict validation
 _MERMAID_NODE = re.compile(r'^([A-Za-z0-9_][A-Za-z0-9_.-]*)\s*(?:(\[\[|\[\(|\(\(|\[|\(|\{)\s*"?(.*?)"?\s*(\]\]|\)\]|\)\)|\]|\)|\}))?$')
 _NONE_CELL = {"", "-", "–", "—", "none", "yok"}
+DULL_RE = re.compile(r"<!--\s*dull:\s*(.*?)\s*-->", re.S)
 
 
 def _table_cells(line: str) -> list[str]:
@@ -638,7 +654,19 @@ def parse_map(text: str) -> dict:
     cycle = find_cycle(edges)
     if cycle:
         problems.append(f"the graph has a cycle: {' --> '.join(cycle)}")
-    return {"nodes": nodes, "edges": edges, "mermaid_ids": mermaid_ids, "problems": problems}
+    # <!-- dull: a, b -->: foundational-but-boring nodes (status suggests a "presence" line when one is next)
+    dull_unknown = []
+    for no, raw in enumerate(lines, 1):
+        m = DULL_RE.search(raw)
+        if not m:
+            continue
+        for did in [x.strip() for x in re.split(r"[,;\s]+", m.group(1)) if x.strip()]:
+            if did in ids:
+                next(n for n in nodes if n["id"] == did)["dull"] = True
+            else:
+                dull_unknown.append(did)
+                problems.append(f"line {no}: dull: '{did}' is not in the node table")
+    return {"nodes": nodes, "edges": edges, "mermaid_ids": mermaid_ids, "problems": problems, "dull_unknown": dull_unknown}
 
 
 def find_cycle(edges: list[dict]) -> list[str] | None:
@@ -701,6 +729,9 @@ def validate_track(track: str) -> tuple[list[str], list[str]]:
         warnings.append(f"{track}: no intake.md (why this track exists: request, goal, diagnosis, decision; new-track starter pack)")
     elif "TODO" in (d / "intake.md").read_text(encoding="utf-8"):
         warnings.append(f"{track}: intake.md still contains TODO")
+    if (d / "map.md").exists() and not any(is_organizer(p.stem) for p in (d / "lessons").glob("*.html")):
+        warnings.append(f"{track}: no organizer page (lessons/0000-harita.html) → build it from tools/organizer-template.html "
+                        "before any graded question (new-track skill)")
     all_ids = {c.get("id") for t in all_tracks() for c in read_jsonl(TRACKS / t / "cards.jsonl")}
     for html in sorted((d / "lessons").glob("*.html")) + sorted((d / "reference").glob("*.html")):
         text = html.read_text(encoding="utf-8")
@@ -709,7 +740,7 @@ def validate_track(track: str) -> tuple[list[str], list[str]]:
         if html.parent.name != "lessons":
             continue
         refs = lesson_card_ids(text)
-        if not refs:
+        if not refs and not is_organizer(html.stem):
             if 'class="quiz"' in text:
                 warnings.append(f"{track}/lessons/{html.name}: quiz without data-card ids; results can't be recorded (build quizzes with `tools/learn cards --html`)")
             else:
@@ -752,7 +783,9 @@ def validate_map(track: str) -> tuple[list[str], list[str]]:
     d = TRACKS / track
     text = (d / "map.md").read_text(encoding="utf-8")
     m = parse_map(text)
-    found = [f"{track}: map.md {p}" for p in m["problems"]]
+    # an unknown id in <!-- dull: … --> is always an error: the comment is new, no old map carries one
+    dull_errors = [f"{track}: map.md {p}" for p in m["problems"] if ": dull: '" in p]
+    found = [f"{track}: map.md {p}" for p in m["problems"] if ": dull: '" not in p]
     ids = {n["id"] for n in m["nodes"]}
     if ids:
         missing: dict[str, list[str]] = {}
@@ -767,7 +800,7 @@ def validate_map(track: str) -> tuple[list[str], list[str]]:
         for node, refs in missing.items():
             found.append(f"{track}: node '{node}' ({', '.join(refs[:5])}{'…' if len(refs) > 5 else ''}) is not in map.md")
     strict = MAP_FORMAT_MARK in text and "TODO" not in text
-    return (found, []) if strict else ([], found)
+    return (dull_errors + found, []) if strict else (dull_errors, found)
 
 
 # ── scheduling (SM-2 variant, confidence-aware) ───────────────────────────
@@ -914,7 +947,7 @@ def today_misses(tracks: list[str]) -> tuple[list[dict], list[dict]]:
         for at in read_jsonl(TRACKS / t / "attempts.jsonl"):
             if ts_day(at.get("ts")) != day:
                 continue
-            if at.get("kind") == "card" and at.get("source") not in UNSCHEDULED_SOURCES and at.get("correct") == "no":
+            if at.get("kind") == "card" and not is_diagnostic(at) and at.get("correct") == "no":
                 why = f"{at.get('card')}: {'dont-know' if at.get('dont_know') or at.get('choice') == 'X' else 'wrong'}"
                 c = by_id.get(at.get("card"))
                 if c and not c.get("retired") and c not in cards:
@@ -971,18 +1004,85 @@ def cmd_due(a):
     while pool and len(picked) < a.limit:
         idx = next((i for i, c in enumerate(pool) if c["node"] not in seen_nodes[-2:]), 0)
         c = pool.pop(idx)
-        picked.append(public_view(c))
+        picked.append(c)
         seen_nodes.append(c["node"])
-    out({"due_total": len(rows), "due_nodes": len(per_node), "showing": len(picked), "cards": picked})
+    if a.html:
+        path = write_review_page(picked)
+        out({"written": rel(path), "cards": len(picked), "due_total": len(rows),
+             "note": "open it for the learner; the page's Kopyala block comes back as `tekrar sonucu … v3` → record-lesson"})
+        return
+    out({"due_total": len(rows), "due_nodes": len(per_node), "showing": len(picked), "cards": [public_view(c) for c in picked]})
 
 
-def cmd_record(a):
-    track, cards, i = find_card(a.card)
-    card = cards[i]
-    result = {"card": card["id"], "node": card["node"]}
-    misconception = a.misconception
-    if a.dont_know:
-        if a.choice or a.correct:
+REVIEWS_DIR = "reviews"  # learner/reviews/review-YYYY-MM-DD.html
+
+
+def review_page_path(day: str | None = None) -> Path:
+    return LEARNER / REVIEWS_DIR / f"review-{day or today().isoformat()}.html"
+
+
+def review_page_html(cards: list[dict], day: str) -> str:
+    """The mixed review page: the due cards in the given order, option cards as quiz skeletons, open cards as
+    `.write` boxes. No topic, track or node name anywhere: the learner has to find which idea applies. data-why
+    comes from the card's explanation (correct) and the misconception's correction (distractor), so the page's
+    feedback reads like a lesson's. Loads ../../assets/ (learner/reviews/ is two levels below the root)."""
+    why_of: dict[str, dict] = {}
+    body = []
+    for c in cards:
+        t = c["track"]
+        if t not in why_of:
+            why_of[t] = {"correction": misconception_field(t, "correction"), "belief": misconception_field(t, "belief")}
+        why = {}
+        for i, o in enumerate(c.get("options") or []):
+            if o.get("correct"):
+                why[i] = c.get("explanation") or ""
+            else:
+                m = o.get("misconception")
+                why[i] = why_of[t]["correction"].get(m) or why_of[t]["belief"].get(m) or ""
+        body.append(card_html(c, why))
+    return "\n".join([
+        "<!doctype html>", '<html lang="tr">', "<head>", '<meta charset="utf-8">',
+        '<meta name="viewport" content="width=device-width, initial-scale=1">',
+        f"<title>Tekrar · {day}</title>",
+        '<link rel="stylesheet" href="../../assets/style.css">',
+        '<script src="../../assets/components.js"></script>',
+        "</head>", "<body>", f'<main data-review="{day}">',
+        f'<p class="kicker"><a href="../dashboard.html">← Pano</a> · Tekrar · {day}</p>',
+        "<h1>Karışık tekrar</h1>",
+        '<p class="subtitle">Konu adı yok: hangi fikrin geçerli olduğunu sen bul.</p>',
+        *body,
+        '<div class="score"></div>', "</main>", "</body>", "</html>", ""])
+
+
+def write_review_page(cards: list[dict]) -> Path:
+    day = today().isoformat()
+    path = review_page_path(day)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    atomic_write_bytes(path, review_page_html(cards, day).encode("utf-8"))
+    return path
+
+
+def review_page_pending() -> str | None:
+    """Today's review page when it exists and no `review-page` answer was recorded today: its relative path."""
+    day = today().isoformat()
+    path = review_page_path(day)
+    if not path.exists():
+        return None
+    for t in all_tracks():
+        for at in read_jsonl(TRACKS / t / "attempts.jsonl"):
+            if at.get("source") == "review-page" and ts_day(at.get("ts")) == day:
+                return None
+    return rel(path)
+
+
+def grade_card(card: dict, choice: str | None = None, correct: str | None = None, dont_know: bool = False,
+               misconception: str | None = None) -> tuple[str, str | None, dict]:
+    """Grade one answer against the card: (correct yes|partial|no, misconception id or None, result bits for the
+    output: chosen / correct_option / reference_answer). Option cards are graded here (choice letter, X or
+    dont_know); open-answer cards take the tutor's judgement in `correct`. Dies on an unusable answer."""
+    result = {}
+    if dont_know:
+        if choice or correct:
             die("--dont-know is the answer itself; don't pass --choice or --correct with it")
         correct = "no"
         result["chosen"] = "dont-know"
@@ -992,16 +1092,16 @@ def cmd_record(a):
         else:
             result["reference_answer"] = card.get("answer")
     elif card.get("options"):
-        if not a.choice:
-            die("this card has options: pass --choice A/B/C/D (or --choice X for 'I don't know')")
-        letter = a.choice.upper()
+        if not choice:
+            die(f"{card.get('id')}: this card has options: pass --choice A/B/C/D (or --choice X for 'I don't know')")
+        letter = choice.upper()
         if letter == "X":
             correct = "no"
             result["chosen"] = "dont-know"
         else:
             idx = LETTERS.find(letter)
             if idx < 0 or idx >= len(card["options"]):
-                die(f"choice must be one of {LETTERS[:len(card['options'])]} or X")
+                die(f"{card.get('id')}: choice must be one of {LETTERS[:len(card['options'])]} or X")
             chosen = card["options"][idx]
             correct = "yes" if chosen.get("correct") else "no"
             result["chosen"] = f"{letter}) {chosen['text']}"
@@ -1009,27 +1109,27 @@ def cmd_record(a):
         right = next(j for j, o in enumerate(card["options"]) if o.get("correct"))
         result["correct_option"] = f"{LETTERS[right]}) {card['options'][right]['text']}"
     else:
-        if not a.correct:
-            die("open-answer card: pass --correct yes|partial|no (your judgement against the reference answer)")
-        correct = a.correct
+        if not correct:
+            die(f"{card.get('id')}: open-answer card: pass --correct yes|partial|no (your judgement against the reference answer)")
         result["reference_answer"] = card.get("answer")
+    return correct, (misconception if correct != "yes" else None), result
+
+
+def record_answer(track: str, cards: list[dict], i: int, correct: str, confidence: int | None, *,
+                  misconception: str | None = None, source: str = "chat", scheduled: bool | None = None,
+                  session: str | None = None, answer_text: str | None = None, choice: str | None = None,
+                  dont_know: bool = False, seconds: int | None = None) -> dict:
+    """Append the attempt row for cards[i] and, when `scheduled`, reschedule the card in place (a correct answer
+    also moves the node's other due cards forward: the node was just retrieved, no new evidence). The caller
+    writes cards.jsonl afterwards. `scheduled` defaults to "not a diagnostic source"; a scheduled row of a
+    diagnostic source (record-lesson v3) says so with `scheduled: true`. Returns the attempt row."""
+    card = cards[i]
+    if scheduled is None:
+        scheduled = source not in UNSCHEDULED_SOURCES
     old_srs = card["srs"]
-    lesson = a.source in UNSCHEDULED_SOURCES
-    if a.dont_know:
-        confidence = 1  # "Bilmiyorum": any confidence answer is ignored
-    elif lesson:
-        # lesson: in-page quiz in an HTML lesson, open book. predict: a guess before the step is taught.
-        # Both are diagnostic (which distractor), not evidence of retention → the card is NOT rescheduled and
-        # the row is excluded from mastery. A lesson page collects confidence (Tahmin/Emin değilim/Eminim), so it
-        # is kept when given (diagnosis: a sure wrong answer is the first thing to talk about); predict stores none.
-        confidence = a.confidence if a.source == "lesson" else None
-    else:
-        confidence = a.confidence  # None = not asked
-    if not lesson:
-        ensure_rewritable(TRACKS / track / "cards.jsonl")  # check before appending anything
+    if scheduled:
         card["srs"] = schedule(old_srs, quality(correct, confidence))
-        cards[i] = card
-        if correct == "yes":  # the node was just retrieved: its other due cards move forward (no new evidence)
+        if correct == "yes":
             for j, c in enumerate(cards):
                 if j != i and c.get("node") == card["node"] and not c.get("retired") and c["srs"].get("last") \
                         and c["srs"]["due"] <= today().isoformat():
@@ -1038,19 +1138,56 @@ def cmd_record(a):
     attempt = {"ts": now_iso(), "kind": "card", "card": card["id"],
                "node": card["node"], "type": card["type"], "correct": correct, "confidence": confidence,
                "misconception": misconception if correct != "yes" else None,
-               "delayed": delayed, "session": a.session}
-    if lesson:
-        attempt["source"] = a.source
-    if a.answer_text:
-        attempt["answer_text"] = a.answer_text
-    if a.dont_know:
+               "delayed": delayed, "session": session}
+    if source != "chat":
+        attempt["source"] = source
+    if source in UNSCHEDULED_SOURCES and scheduled:
+        attempt["scheduled"] = True
+    if answer_text:
+        attempt["answer_text"] = answer_text
+    if dont_know:
         attempt["choice"] = None
         attempt["dont_know"] = True
-    elif a.choice:
-        attempt["choice"] = a.choice.upper()
-    # Order matters: the attempt (the evidence) is appended first, then the card is rewritten.
+    elif choice:
+        attempt["choice"] = choice.upper()
+    if seconds is not None:
+        attempt["seconds"] = seconds
+    # Order matters: the attempt (the evidence) is appended first, then the card is rewritten (by the caller).
     # A crash in between leaves a logged answer with an unchanged schedule (re-asked early), never the reverse.
     append_jsonl(TRACKS / track / "attempts.jsonl", attempt)
+    return attempt
+
+
+def answer_flag(correct: str, confidence: int | None) -> str | None:
+    if correct == "no" and confidence == 3:
+        return "high-confidence error: dig into the belief behind it before moving on (hypercorrection moment)"
+    if correct == "yes" and confidence == 1:
+        return "correct but guessed: not evidence of knowledge; re-check this node soon with a different question"
+    return None
+
+
+def cmd_record(a):
+    track, cards, i = find_card(a.card)
+    card = cards[i]
+    result = {"card": card["id"], "node": card["node"]}
+    correct, misconception, bits = grade_card(card, a.choice, a.correct, a.dont_know, a.misconception)
+    result.update(bits)
+    lesson = a.source in UNSCHEDULED_SOURCES
+    if a.dont_know:
+        confidence = 1  # "Bilmiyorum": any confidence answer is ignored
+    elif lesson:
+        # lesson: in-page quiz in an HTML lesson, open book. predict: a guess before the step is taught.
+        # Both are diagnostic (which distractor), not evidence of retention → the card is NOT rescheduled and
+        # the row is excluded from mastery. A lesson page collects confidence (Tahmin/Emin değilim/Eminim), so it
+        # is kept when given (diagnosis: a sure wrong answer is the first thing to talk about); predict stores none.
+        # (A pasted v3 block goes through `record-lesson`, which DOES schedule; this CLI path stays diagnostic.)
+        confidence = a.confidence if a.source == "lesson" else None
+    else:
+        confidence = a.confidence  # None = not asked
+    if not lesson:
+        ensure_rewritable(TRACKS / track / "cards.jsonl")  # check before appending anything
+    attempt = record_answer(track, cards, i, correct, confidence, misconception=misconception, source=a.source,
+                            session=a.session, answer_text=a.answer_text, choice=a.choice, dont_know=a.dont_know)
     if not lesson:
         write_jsonl(TRACKS / track / "cards.jsonl", cards)
     result.update({"correct": correct, "confidence": confidence, "misconception": attempt["misconception"],
@@ -1059,22 +1196,215 @@ def cmd_record(a):
         result["note"] = "lesson answer: recorded for diagnosis only; not scheduled, not counted as mastery. Re-ask this node in chat."
     elif a.source == "predict":
         result["note"] = "prediction: recorded for diagnosis only; not scheduled, not counted as mastery. Open the teaching by resolving the guess."
-    if correct == "no" and confidence == 3:
-        result["flag"] = "high-confidence error: dig into the belief behind it before moving on (hypercorrection moment)"
-    elif correct == "yes" and confidence == 1:
-        result["flag"] = "correct but guessed: not evidence of knowledge; re-check this node soon with a different question"
+    flag = answer_flag(correct, confidence)
+    if flag:
+        result["flag"] = flag
     out(result)
 
 
-def misconception_beliefs(track: str) -> dict[str, str]:
+# ── record-lesson: the result block a lesson / review page produces (one paste) ───────────────────────────────
+# v3 block (assets/components.js, single Kopyala button):
+#   ders sonucu 0003 v3            | tekrar sonucu 2026-11-05 v3
+#   mcq: gt-012=B/3 "neden"; gt-013=?/1; gt-014=A/2
+#   yaz: gt-020/2 | metin ⏎ ikinci satır
+#   soru: öğrencinin sorusu
+#   süre: gt-030=58s
+# Legacy (no "v3"): one line `ders sonucu 0002: a=B b=C` or `ders sonucu 0003: a=B/3 "…"; b=?/1`.
+
+RESULT_ITEM_RE = re.compile(r'([^\s=;"]+)=([A-Za-z?])(?:/([1-3]))?(?:\s+"([^"]*)")?')
+V3_HEAD_RE = re.compile(r"^\s*(ders|tekrar) sonucu\s+(\S+)\s+v3\s*$")
+LEGACY_HEAD_RE = re.compile(r"^\s*ders sonucu\s+([^\s:]+)\s*:\s*(.*)$", re.S)
+INBOX_HEADING = "# Inbox — sayfadan gelenler"
+
+
+def unbreak(text: str) -> str:
+    """The page writes a line break inside a yaz:/soru: text as ` ⏎ ` → real newlines, pieces stripped."""
+    return "\n".join(p.strip() for p in re.split(r"\s*⏎\s*", text) if p.strip())
+
+
+def parse_result_block(text: str) -> dict:
+    """{kind: lesson|review, id, format: v3|legacy, mcq: [{card, choice, confidence, why}], write: [{card, confidence,
+    text}], questions: [str], seconds: {card: int}}. Dies when the header is unreadable."""
+    lines = [ln.rstrip() for ln in text.strip().splitlines() if ln.strip()]
+    if not lines:
+        die("pass the result block on stdin (first line: `ders sonucu NNNN v3` or `tekrar sonucu YYYY-MM-DD v3`)")
+    res = {"mcq": [], "write": [], "questions": [], "seconds": {}}
+
+    def items(s):
+        return [{"card": m.group(1), "choice": m.group(2).upper(), "confidence": int(m.group(3)) if m.group(3) else None,
+                 "why": m.group(4) or None} for m in RESULT_ITEM_RE.finditer(s)]
+    head = V3_HEAD_RE.match(lines[0])
+    if head:
+        res.update(kind="lesson" if head.group(1) == "ders" else "review", id=head.group(2), format="v3")
+        for ln in lines[1:]:
+            key, _, body = ln.partition(":")
+            key, body = key.strip().lower(), body.strip()
+            if key == "mcq":
+                res["mcq"] += items(body)
+            elif key == "yaz":
+                m = re.match(r"^([^\s/|]+)(?:/([1-3]))?\s*\|\s*(.*)$", body, re.S)
+                if not m:
+                    die(f"can't read yaz line: {ln[:60]}")
+                res["write"].append({"card": m.group(1), "confidence": int(m.group(2)) if m.group(2) else None,
+                                     "text": unbreak(m.group(3))})
+            elif key == "soru":
+                if unbreak(body):
+                    res["questions"].append(unbreak(body))
+            elif key in ("süre", "sure"):
+                for cid, secs in re.findall(r"([^\s=;,]+)=(\d+)\s*s?", body):
+                    res["seconds"][cid] = int(secs)
+            else:
+                die(f"unknown line in result block: {ln[:60]}")
+        return res
+    head = LEGACY_HEAD_RE.match(" ".join(lines))
+    if not head:
+        die("unreadable result block: first line must be `ders sonucu NNNN v3`, `tekrar sonucu YYYY-MM-DD v3` or the "
+            "old `ders sonucu NNNN: …` line")
+    res.update(kind="lesson", id=head.group(1), format="legacy", mcq=items(head.group(2)))
+    return res
+
+
+def inbox_append(track: str, section: str, lines: list[str]) -> Path:
+    """Append one `## <section>` block to tracks/<t>/inbox.md (created with its heading when missing)."""
+    f = TRACKS / track / "inbox.md"
+    text = f.read_text(encoding="utf-8") if f.exists() else INBOX_HEADING + "\n"
+    if not text.endswith("\n"):
+        text += "\n"
+    text += f"\n## {section}\n" + "".join(f"{ln}\n" for ln in lines)
+    atomic_write_bytes(f, text.encode("utf-8"))
+    return f
+
+
+def inbox_counts(track: str) -> tuple[int, int]:
+    """(open-answer items, questions) waiting in tracks/<t>/inbox.md."""
+    f = TRACKS / track / "inbox.md"
+    if not f.exists():
+        return 0, 0
+    text = f.read_text(encoding="utf-8")
+    return len(re.findall(r"^- yaz ", text, re.M)), len(re.findall(r"^- soru:", text, re.M))
+
+
+def cmd_record_lesson(a):
+    """Record a pasted result block in one go. v3: every mcq item is graded AND scheduled (confidence given), the
+    row carries source lesson|review-page + scheduled: true; yaz/soru items go to the track's inbox.md for the
+    tutor to grade in chat / answer. Legacy block: diagnostic rows, as `record --source lesson`."""
+    block = parse_result_block(sys.stdin.read())
+    v3 = block["format"] == "v3"
+    source = "review-page" if block["kind"] == "review" else "lesson"
+    # resolve every card before writing anything: a typo in one id must not leave a half-recorded paste
+    loaded: dict[str, list[dict]] = {}
+    where: dict[str, tuple[str, int]] = {}
+    for it in block["mcq"] + block["write"]:
+        if it["card"] in where:
+            continue
+        t, cards, i = find_card(it["card"])
+        loaded.setdefault(t, cards)
+        where[it["card"]] = (t, i)
+    for it in block["mcq"]:
+        if not loaded[where[it["card"]][0]][where[it["card"]][1]].get("options"):
+            die(f"{it['card']} is an open-answer card; it belongs on a `yaz:` line, not `mcq:`")
+    if v3:
+        for t in loaded:
+            ensure_rewritable(TRACKS / t / "cards.jsonl")
+    recorded, flags, touched = [], [], set()
+    for it in block["mcq"]:
+        t, i = where[it["card"]]
+        cards, card = loaded[t], loaded[t][i]
+        dont_know = it["choice"] == "?" or it["choice"] == "X"
+        correct, misconception, bits = grade_card(card, None if dont_know else it["choice"], None, dont_know)
+        confidence = 1 if dont_know else it["confidence"]
+        attempt = record_answer(t, cards, i, correct, confidence, misconception=misconception, source=source,
+                                scheduled=v3, session=a.session, answer_text=it["why"],
+                                choice=None if dont_know else it["choice"], dont_know=dont_know,
+                                seconds=block["seconds"].get(it["card"]))
+        if v3:
+            write_jsonl(TRACKS / t / "cards.jsonl", cards)
+            touched.add(t)
+        row = {"card": card["id"], "node": card["node"], **bits, "correct": correct, "confidence": confidence,
+               "misconception": attempt["misconception"], "explanation": card.get("explanation"),
+               "scheduled": bool(v3), "next_due": card["srs"]["due"]}
+        if it["why"]:
+            row["answer_text"] = it["why"]
+        recorded.append(row)
+        flag = answer_flag(correct, confidence)
+        if flag:
+            flags.append((0 if confidence == 3 else 1 if correct == "no" else 2, f"{card['id']} ({card['node']}): {flag}"))
+    flags.sort(key=lambda x: x[0])
+    # yaz: / soru: → inbox.md (the engine never grades free text)
+    section = f"{today().isoformat()} · " + (f"ders {block['id']}" if block["kind"] == "lesson" else f"tekrar {block['id']}")
+    per_track: dict[str, list[str]] = {}
+    to_grade = []
+    for it in block["write"]:
+        t, i = where[it["card"]]
+        card = loaded[t][i]
+        one_line = " / ".join(x.strip() for x in it["text"].splitlines() if x.strip())
+        conf = f" (eminlik {it['confidence']})" if it["confidence"] else ""
+        per_track.setdefault(t, []).append(f"- yaz {card['id']}{conf}: {one_line}")
+        row = {"card": card["id"], "node": card["node"], "type": card["type"], "confidence": it["confidence"],
+               "answer_text": it["text"], "reference_answer": card.get("answer")}
+        if it["card"] in block["seconds"]:
+            row["seconds"] = block["seconds"][it["card"]]
+        to_grade.append(row)
+    if block["questions"]:
+        home = load_state().get("active_track") if block["kind"] == "review" else None
+        home = home or next(iter(per_track), None) or next(iter(loaded), None) or load_state().get("active_track")
+        if home:
+            per_track.setdefault(home, []).extend(f"- soru: {' / '.join(q.splitlines())}" for q in block["questions"])
+        else:
+            flags.append((3, "questions not filed: no active track and no card in the block names one"))
+    inbox = [rel(inbox_append(t, section, lines)) for t, lines in per_track.items()]
+    res = {"lesson" if block["kind"] == "lesson" else "review": block["id"], "format": block["format"],
+           "recorded": recorded, "to_grade": to_grade, "questions": block["questions"], "flags": [f for _, f in flags],
+           "inbox": inbox}
+    if not v3:
+        res["note"] = "legacy result line: recorded for diagnosis only (not scheduled, not mastery). Re-ask missed nodes in chat."
+    elif to_grade:
+        res["note"] = ("to_grade: talk 2–3 of them through in chat, then `record --card <id> --correct yes|partial|no "
+                       "--answer-text \"…\"` (that schedules the card); the rest stay in inbox.md")
+    out(res)
+
+
+def misconception_field(track: str, field: str = "belief") -> dict[str, str]:
+    """`- <field>: …` line of every `## m-…` section of misconceptions.md (belief, correction, …)."""
     f = TRACKS / track / "misconceptions.md"
     if not f.exists():
         return {}
-    return dict(re.findall(r"^## (m-[a-z0-9-]+)\s*\n- belief: (.*)$", f.read_text(encoding="utf-8"), re.M))
+    text = f.read_text(encoding="utf-8")
+    return dict(re.findall(rf"^## (m-[a-z0-9-]+)\s*\n(?:(?!## ).*\n)*?- {re.escape(field)}: (.*)$", text, re.M))
+
+
+def misconception_beliefs(track: str) -> dict[str, str]:
+    return misconception_field(track, "belief")
 
 
 def html_escape(t: str) -> str:
     return t.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace('"', "&quot;")
+
+
+def card_html(card: dict, why: dict | None = None, label: str | None = None) -> str:
+    """The assets/components.js skeleton of one card. Option cards: `.quiz[data-card][data-answer]` with the stored
+    (shuffled) option order; `why` maps option index → data-why text (default: TODO placeholders for the lesson
+    author). Open-answer cards (recall/explain): `.write[data-card]`, the open-answer box; its text comes back on a
+    `yaz:` line of the result block and is graded in chat, so the reference answer is never on the page."""
+    attrs = f' data-label="{html_escape(label)}"' if label else ""
+    parts = []
+    if card.get("options"):
+        right = next(i for i, o in enumerate(card["options"]) if o.get("correct"))
+        parts.append(f'<div class="quiz" data-card="{card["id"]}" data-answer="{right}"{attrs}>')
+        parts.append(f'  <p class="q">{html_escape(card["prompt"])}</p>')
+        if card.get("code"):
+            parts.append(f'  <pre><code>{html_escape(card["code"])}</code></pre>')
+        parts.append('  <div class="opts">')
+        for i, o in enumerate(card["options"]):
+            parts.append(f'    <button class="opt" data-why="{html_escape((why or {}).get(i) or "")}">{html_escape(o["text"])}</button>')
+        parts.append('  </div>\n  <div class="feedback"></div>\n</div>\n')
+    else:
+        parts.append(f'<div class="write" data-card="{card["id"]}"{attrs}>')
+        parts.append(f'  <p class="q">{html_escape(card["prompt"])}</p>')
+        if card.get("code"):
+            parts.append(f'  <pre><code>{html_escape(card["code"])}</code></pre>')
+        parts.append('</div>\n')
+    return "\n".join(parts)
 
 
 def cmd_cards(a):
@@ -1096,25 +1426,15 @@ def cmd_cards(a):
         return
     # HTML skeleton for assets/components.js: option order = stored (shuffled) order; data-why left for you to
     # write in the learner's language (correct: from `explanation`; distractor: from the misconception).
+    # Open-answer cards become `.write[data-card]` boxes (their text comes back on a `yaz:` line, graded in chat).
     parts = []
     for r in rows:
-        if r.get("options"):
-            right = next(i for i, o in enumerate(r["options"]) if o["correct"])
-            parts.append(f'<div class="quiz" data-card="{r["id"]}" data-answer="{right}">')
-            parts.append(f'  <p class="q">{html_escape(r["prompt"])}</p>')
-            if r.get("code"):
-                parts.append(f'  <pre><code>{html_escape(r["code"])}</code></pre>')
-            parts.append('  <div class="opts">')
-            for o in r["options"]:
-                why = "TODO: " + (f"neden doğru ({html_escape(r.get('explanation') or '')[:80]}…)" if o["correct"]
-                                  else f"{o['misconception']}: {html_escape(o['belief'] or '')}")
-                parts.append(f'    <button class="opt" data-why="{why}">{html_escape(o["text"])}</button>')
-            parts.append('  </div>\n  <div class="feedback"></div>\n</div>\n')
-        else:
-            parts.append(f'<details class="recall" data-card="{r["id"]}">')
-            parts.append(f'  <summary>{html_escape(r["prompt"])}</summary>')
-            parts.append(f'  <p>{html_escape(r.get("answer") or "")}</p>\n</details>\n')
-    if any(r.get("options") for r in rows):
+        why = {}
+        for i, o in enumerate(r.get("options") or []):
+            why[i] = "TODO: " + (f"neden doğru ({(r.get('explanation') or '')[:80]}…)" if o["correct"]
+                                 else f"{o['misconception']}: {o['belief'] or ''}")
+        parts.append(card_html(r, why))
+    if rows:
         parts.append('<div class="score"></div>')
     print("\n".join(parts))
 
@@ -1212,11 +1532,9 @@ def node_progress(track: str, with_map: bool = False, until: str | None = None) 
         old = ts_day(at.get("ts")) < MASTERY_RULES_SINCE
         p = pre.setdefault(node, [0, 0, 0, 0, 0])
         if at["kind"] == "card":
-            if at.get("source") == "lesson":
-                n["lesson_answers"] = n.get("lesson_answers", 0) + 1
-                continue
-            if at.get("source") == "predict":
-                n["predict_answers"] = n.get("predict_answers", 0) + 1
+            if is_diagnostic(at):  # a scheduled lesson-page row (record-lesson v3) counts below like a chat answer
+                key = "lesson_answers" if at.get("source") == "lesson" else "predict_answers"
+                n[key] = n.get(key, 0) + 1
                 continue
             n["attempts"] += 1
             p[0] += old
@@ -1317,19 +1635,47 @@ def generation_gap(rows: list[dict]) -> dict:
             "flag": (gap > 0.3) if len(mcq) >= 8 and len(gen) >= 8 else None}
 
 
+BAND_WINDOW = 10  # scheduled card answers the band looks at
+
+
+def band(rows: list[dict] | None = None) -> dict:
+    """Where the learner sits right now: accuracy of the last BAND_WINDOW scheduled card answers (all tracks, in
+    time order; diagnostic lesson/predict rows excluded). hint: down = drop into lesson mode, smaller steps;
+    up = switch to probe mode, skip ahead (needs a full window); hold = keep the pace."""
+    if rows is None:
+        rows = [r for r in all_attempts() if r["kind"] == "card" and not is_diagnostic(r)]
+    last = rows[-BAND_WINDOW:]
+    if not last:
+        return {"n": 0, "accuracy": None, "hint": "hold"}
+    acc = round(sum(r.get("correct") == "yes" for r in last) / len(last), 2)
+    hint = "down" if acc < 0.5 else "up" if acc > 0.95 and len(last) >= BAND_WINDOW else "hold"
+    return {"n": len(last), "accuracy": acc, "hint": hint}
+
+
+def pace(track: str) -> dict:
+    """Progress rate of one track: map nodes, nodes done (DONE_LEVELS), study days, nodes per day and the days left
+    at that rate (None when there is no rate yet). Nothing in it is a guess about the learner; it is arithmetic."""
+    prog = node_progress(track, with_map=True)
+    in_map = map_node_ids(track)
+    nodes = [n for k, n in prog.items() if k in in_map] if in_map else list(prog.values())
+    done = sum(1 for n in nodes if n["level"] in DONE_LEVELS)
+    days = len(study_days(read_jsonl(TRACKS / track / "attempts.jsonl")))
+    per_day = round(done / days, 2) if days else None
+    remaining = len(nodes) - done
+    return {"nodes": len(nodes), "done": done, "days": days, "per_day": per_day,
+            "remaining_days": (int(-(-remaining // per_day)) if per_day else None) if remaining else 0}
+
+
 def cmd_signals(a):
     """How this learner learns, computed from their answers across all tracks."""
     cards_att, tasks, lesson_att, predict_att = [], [], [], []
-    for t in all_tracks():
-        for at in read_jsonl(TRACKS / t / "attempts.jsonl"):
-            if at["kind"] != "card":
-                tasks.append(at)
-            elif at.get("source") == "lesson":
-                lesson_att.append(at)
-            elif at.get("source") == "predict":
-                predict_att.append(at)
-            else:
-                cards_att.append(at)
+    for at in all_attempts():
+        if at["kind"] != "card":
+            tasks.append(at)
+        elif is_diagnostic(at):
+            (lesson_att if at.get("source") == "lesson" else predict_att).append(at)
+        else:
+            cards_att.append(at)
     if not cards_att:
         out({"note": "no answers recorded yet"})
         return
@@ -1362,6 +1708,8 @@ def cmd_signals(a):
         "predictions": acc(predict_att),
         "generation_gap": generation_gap(cards_att),
         "trend": {"last_20": acc(recent), "previous_20": acc(earlier)},
+        "band": band(cards_att),
+        "pace": {t: pace(t) for t in all_tracks()},
         "tasks": {"events": len(tasks), "passed": len(passed),
                   "avg_hints_when_passed": round(sum(t.get("hints_used", 0) for t in passed) / len(passed), 1) if passed else None},
         "use": "update the Observed sections of learner/profile.md only with patterns that hold across sessions; cite the evidence",
@@ -1371,7 +1719,8 @@ def cmd_signals(a):
 # ── engagement pacing ("chocolate"): when to recap, tease, celebrate ─────────
 # The LLM decides what to say; this decides *when*, so it is neither every message nor never.
 
-MOMENT_KINDS = {"recap", "cheatsheet", "teaser", "value", "milestone", "lesson"}
+MOMENT_KINDS = {"recap", "cheatsheet", "teaser", "value", "milestone", "lesson", "advice", "presence"}
+ADVICE_EVERY_DAYS = 3      # an unasked-for suggestion at most this often (status: "öneri hakkı")
 RECAP_EVERY_NODES = 4      # newly checked nodes since the last recap
 
 
@@ -1525,6 +1874,155 @@ def data_warning_lines(limit: int = 12) -> list[str]:
     return ["", "## DATA WARNING"] + lines + [""] if lines else []
 
 
+def relationship() -> dict | None:
+    """learner/relationship.md: {frontmatter: {key: value}, life: [{date, until, text}]} (the `## Hayatından`
+    bullets `- YYYY-MM-DD: text` / `- YYYY-MM-DD'a kadar: text`), or None when the file does not exist."""
+    f = LEARNER / "relationship.md"
+    if not f.exists():
+        return None
+    text = f.read_text(encoding="utf-8")
+    fm = {}
+    m = re.match(r"\s*---\r?\n(.*?)\r?\n---", text, re.S)
+    if m:
+        for ln in m.group(1).splitlines():
+            k, sep, v = ln.partition(":")
+            if sep and k.strip():
+                fm[k.strip()] = v.strip()
+    life = []
+    sec = re.search(r"^##\s*Hayatından[^\n]*\n(.*?)(?=^##\s|\Z)", text, re.S | re.M)
+    if sec:
+        for ln in sec.group(1).splitlines():
+            mm = re.match(r"^- (\d{4}-\d{2}-\d{2})((?:'|’)[a-zA-ZğüşıöçĞÜŞİÖÇ]* kadar)?\s*:\s*(.*)$", ln.strip())
+            if mm:
+                life.append({"date": mm.group(1), "until": mm.group(2) or "", "text": mm.group(3).strip()})
+    return {"frontmatter": fm, "life": life}
+
+
+def tr_days_ago(day: str) -> str:
+    n = (today() - dt.date.fromisoformat(day)).days
+    return "bugün" if n == 0 else "dün" if n == 1 else f"{n} gün önce"
+
+
+def person_lines() -> list[str]:
+    """The "## Kişi" block of status: who the learner is to the tutor (relationship.md), when they last studied,
+    what is going on in their life, and today's allowance for an unasked-for suggestion / a presence line."""
+    r = relationship()
+    if r is None:
+        return ["learner: relationship.md yok → onboarding'deki 3 soruyla oluştur"]
+    fm = r["frontmatter"]
+    bits = [fm.get("name") or "?"]
+    for key, label in (("address_as", "hitap"), ("closing", "kapanış"), ("tone", "ton"), ("rhythm", "ritim")):
+        if fm.get(key):
+            bits.append(f'{label}: "{fm[key]}"' if key == "closing" else f"{label}: {fm[key]}")
+    lines = ["", "## Kişi (learner/relationship.md)", "- " + " · ".join(bits)]
+    days = study_days(all_attempts())
+    if days:
+        lines.append(f"- son oturum: {tr_days_ago(days[-1])} ({days[-1]}) · seri: {streak(days)} gün")
+    else:
+        lines.append("- son oturum: yok · seri: 0 gün")
+    for item in r["life"]:
+        try:
+            delta = (dt.date.fromisoformat(item["date"]) - today()).days
+        except ValueError:
+            continue
+        when = "bugün" if delta == 0 else f"{delta} gün sonra" if delta > 0 else "geçti → sor, sonra satırı sil"
+        text = item["text"]
+        head, arrow, tail = text.partition(" → ")
+        body = f"{head} ({when}) → {tail}" if arrow else f"{text} ({when})"
+        lines.append(f"- hayatından: {item['date']}{item['until']} {body}")
+    moments = read_jsonl(MOMENTS)
+    advice = [m for m in moments if m.get("kind") == "advice"]
+    if advice:
+        last = ts_day(advice[-1].get("ts"))
+        ago = (today() - dt.date.fromisoformat(last)).days if re.fullmatch(r"\d{4}-\d{2}-\d{2}", last) else 999
+        right = f"bugün 1 (son öneri {ago} gün önce)" if ago >= ADVICE_EVERY_DAYS else f"bugün 0 (son: {last}, {tr_days_ago(last)})"
+    else:
+        right = "bugün 1 (henüz öneri yok)"
+    used = sum(1 for m in moments if m.get("kind") == "presence" and ts_day(m.get("ts")) == today().isoformat())
+    lines.append(f"- öneri hakkı: {right} | yanında olma anı: " + ("bugün 1" if not used else "bugün 0 (kullanıldı)"))
+    return lines
+
+
+def track_graph(track: str) -> tuple[list[dict], list[dict], dict | None]:
+    """(export-shaped nodes {id, level, in_map, title, kind, definition, statement}, edges, parsed map) of a track."""
+    m = track_map(track)
+    by_id = {n["id"]: n for n in m["nodes"]} if m else {}
+    nodes = [{"id": k, "level": v["level"], "in_map": k in by_id, "title": by_id.get(k, {}).get("title"),
+              "kind": by_id.get(k, {}).get("kind"), "definition": by_id.get(k, {}).get("definition"),
+              "statement": by_id.get(k, {}).get("statement")}
+             for k, v in node_progress(track, with_map=True).items()]
+    return nodes, (m["edges"] if m else []), m
+
+
+def track_next(track: str) -> str | None:
+    """The map node to study next (same rule as the export's `next`: next_node), or None without a map."""
+    nodes, edges, m = track_graph(track)
+    if not m or not m["nodes"]:
+        return None
+    return next_node(nodes, edges)
+
+
+def konum_lines(active: str) -> list[str]:
+    """The "## Konum" block of status: three lines the tutor opens and closes a session with — where we are,
+    which direction (the path toward the goal), what comes next (with its learner definition)."""
+    nodes, edges, m = track_graph(active)
+    if not m or not m["nodes"]:
+        return []
+    pos = track_position(nodes, edges)
+    by_id = {n["id"]: n for n in nodes}
+    lines = ["", f"## Konum ({active})"]
+    now = "bitti" if pos["finished"] else (pos["current"] or "?")
+    lines.append(f"- şu an: {now} · {pos['done']}/{pos['total']} düğüm işlendi (checked+) · {pos['learning']} öğreniliyor")
+    if pos["path"]:
+        shown = pos["path"][:POSITION_PATH] + (["…"] if len(pos["path"]) > POSITION_PATH else [])
+        lines.append("- yön: " + " → ".join(shown))
+    nxt = pos["path"][1] if len(pos["path"]) > 1 else None
+    if nxt:
+        n = by_id.get(nxt, {})
+        desc = first_sentence(n.get("definition") or n.get("statement") or "")
+        lines.append(f"- sıradaki: {nxt}" + (f" — {desc}" if desc else ""))
+    elif pos["finished"]:
+        lines.append("- sıradaki: yok — harita bitti; yeni hedef ya da kalıcılık turu")
+    else:
+        lines.append("- sıradaki: yok — hedef düğümdesin")
+    return lines
+
+
+BAND_TR = {"down": "ders moduna in, adımı küçült", "hold": "tempoyu koru", "up": "probe moduna çık, atla"}
+
+
+def tempo_lines(active: str) -> list[str]:
+    """The "## Tempo" block of status: the active track's pace, the learner's band, and a note when the next
+    node is marked dull in the map (a presence line fits there)."""
+    p = pace(active)
+    line = f"- pace: {p['nodes']} düğümden {p['done']} işlendi"
+    if p["days"] > 2 and p["per_day"] is not None:
+        line += f" · {p['per_day']} düğüm/oturum"
+        if p["remaining_days"] is not None:
+            line += f" · kalan ≈ {p['remaining_days']} oturum"
+    else:
+        line += f" · {p['days']} oturum"
+    b = band()
+    band_line = (f"- band: son {b['n']} planlı cevapta doğruluk {b['accuracy']} → {b['hint']} ({BAND_TR[b['hint']]})"
+                 if b["n"] else "- band: planlı cevap yok → hold")
+    lines = ["", "## Tempo", line, band_line]
+    nxt = track_next(active)
+    m = track_map(active)
+    if nxt and m and any(n["id"] == nxt and n.get("dull") for n in m["nodes"]):
+        lines.append(f'- sıradaki düğüm temel-ama-sıkıcı (dull: {nxt}): bir "yanında olma" cümlesi uygun')
+    return lines
+
+
+def inbox_lines() -> list[str]:
+    lines = []
+    for t in all_tracks():
+        writes, questions = inbox_counts(t)
+        if writes or questions:
+            lines.append(f"- {t}: {writes} yazı, {questions} soru (tracks/{t}/inbox.md) → sohbette 2–3 yazıyı puanla, "
+                         "soruları cevapla/haritaya al; bitince bölümü sil")
+    return ["", "## Inbox (sayfadan gelenler)"] + lines if lines else []
+
+
 def cmd_status(a):
     """Short, human-readable; printed into Claude's context at session start."""
     lines = ["# Learning system status",
@@ -1553,6 +2051,7 @@ def cmd_status(a):
         n_lessons = len(list((TRACKS / t / "lessons").glob("*.html"))) if (TRACKS / t / "lessons").is_dir() else 0
         extra = f", {n_lessons} lessons" if n_lessons else ""
         lines.append(f"- track {t}{mark}: {len(cards)} cards, due for review today: {due}{extra}, nodes {levels or '{}'}")
+    lines += person_lines()
     lesson_lines = []
     for t in tracks:
         unrecorded, unbound = lesson_status(t)
@@ -1560,12 +2059,18 @@ def cmd_status(a):
                ([f"quiz bağlı değil: {', '.join(unbound)}"] if unbound else [])
         if bits:
             lesson_lines.append(f"- {t}: " + "; ".join(bits))
+    pending = review_page_pending()
+    if pending:
+        lesson_lines.append(f"- tekrar sayfası {pending}: sonucu kaydedilmedi → öğrenci `tekrar sonucu … v3` bloğunu "
+                            "yapıştırınca: tools/learn record-lesson")
     if lesson_lines:
-        lines += ["", "## Lessons (record quiz results: record --source lesson; bind quizzes: cards --html)"] + lesson_lines
+        lines += ["", "## Lessons (record a pasted result block: record-lesson; bind quizzes: cards --html)"] + lesson_lines
     if active:
         nxt = handoff_next(active)
         if nxt:
             lines += ["", f"## Resume point ({active}/handoff.md)", nxt]
+        lines += konum_lines(active)
+        lines += tempo_lines(active)
     unlogged = unlogged_days()
     if unlogged:
         lines += ["", "## UNLOGGED SESSIONS (the session ended without a wrap-up; do this first, silently)"] + \
@@ -1573,6 +2078,7 @@ def cmd_status(a):
     gaps = notes_gaps()
     if gaps:
         lines += ["", "## Notes gaps (fill before wrap-up ends; the dashboard's node cards show these)"] + [f"- {g}" for g in gaps]
+    lines += inbox_lines()
     hints = engagement_hints()
     if hints:
         lines += ["", "## Engagement (see teach/engagement.md; never during struggle)"] + [f"- {h}" for h in hints]
@@ -1617,6 +2123,8 @@ def notes_gaps() -> list[str]:
         if lessons_dir.is_dir():
             cards = {c.get("id"): c.get("node") for c in read_jsonl(TRACKS / t / "cards.jsonl")}
             for f in sorted(lessons_dir.glob("*.html")):
+                if is_organizer(f.stem):  # the Harita page names every node; it teaches none
+                    continue
                 text = f.read_text(encoding="utf-8")
                 taught |= set(lesson_facts(f, text, lesson_card_ids(text), cards, [])["nodes"])
         no_les = [n["id"] for n in m["nodes"] if (prog.get(n["id"]) or {}).get("level") in DONE and n["id"] not in taught]
@@ -1719,6 +2227,55 @@ def next_node(nodes: list[dict], edges: list[dict]) -> str | None:
     return next((n for n in order if level[n] not in DONE_LEVELS), None)
 
 
+POSITION_PATH = 5  # ids shown on the "yön" line / in a lesson's data-pos
+
+
+def goal_path(start: str, nodes: list[dict], edges: list[dict]) -> list[str]:
+    """Node ids from `start` along the dependency arrows to the goal: the shortest route to a reachable sink of
+    kind goal, else to the deepest reachable sink. [start] when it is a sink itself."""
+    ids = {n["id"] for n in nodes}
+    kind = {n["id"]: n.get("kind") for n in nodes}
+    succ: dict[str, list[str]] = {i: [] for i in ids}
+    for e in edges:
+        if e["from"] in ids and e["to"] in ids and e["from"] != e["to"]:
+            succ[e["from"]].append(e["to"])
+    prev, dist, queue = {start: None}, {start: 0}, [start]
+    while queue:
+        n = queue.pop(0)
+        for m in succ.get(n, []):
+            if m not in dist:
+                dist[m], prev[m] = dist[n] + 1, n
+                queue.append(m)
+    sinks = [n for n in dist if not succ.get(n)]
+    if not sinks:
+        return [start]
+    goals = [n for n in sinks if kind.get(n) == "goal"]
+    end = min(goals, key=lambda n: dist[n]) if goals else max(sinks, key=lambda n: dist[n])
+    path = []
+    while end is not None:
+        path.append(end)
+        end = prev[end]
+    return path[::-1]
+
+
+def track_position(nodes: list[dict], edges: list[dict]) -> dict:
+    """Where a track stands, ids only: `current` = the node to teach now (next_node), `path` = from it toward the
+    goal sink, `labels` = short labels of the path's nodes, counts of done (checked+) and in-progress nodes.
+    `nodes` are export-shaped ({id, level, in_map, title?, kind?})."""
+    pool = [n for n in nodes if n["in_map"]] or nodes
+    current = next_node(nodes, edges) if nodes else None
+    path = goal_path(current, pool, edges) if current else []
+    return {"current": current, "path": path,
+            "labels": {n["id"]: (n.get("title") or n["id"]) for n in pool if n["id"] in path},
+            "done": sum(n["level"] in DONE_LEVELS for n in pool),
+            "total": len(pool), "learning": sum(n["level"] in ("learning", "struggling") for n in pool),
+            "finished": current is None and bool(pool)}
+
+
+def first_sentence(text: str) -> str:
+    return re.split(r"(?<=[.!?])\s+", text.strip(), maxsplit=1)[0] if text else ""
+
+
 def cheatsheet_sections(path: Path) -> dict[str, str]:
     """`## <heading>` sections of a cheatsheet, keyed by the normalised heading ("Implication" → "implication")."""
     if not path.exists():
@@ -1796,7 +2353,8 @@ def track_export(t: str) -> dict:
             "map": {"nodes": nodes, "edges": edges, "problems": problems},
             "next": next_node(nodes, edges), "due": due, "lessons": lessons,
             "tasks": task_rows, "files": files, "docs": docs,
-            "last_studied": days[-1] if days else None, "resume": resume}
+            "last_studied": days[-1] if days else None, "resume": resume, "pace": pace(t),
+            "position": track_position(nodes, edges)}
 
 
 DOC_TYPES = (("cheatsheet", "cheatsheet"), ("glossary", "glossary"), ("resources", "resources"), ("map", "map"))
@@ -1940,7 +2498,7 @@ def export_recent(limit: int = 14) -> list[dict]:
                 if lv(after, n) in DONE and LEVELS.index(lv(after, n)) > LEVELS.index(lv(before, n))]
         started = [n for n in after if lv(before, n) == "new" and lv(after, n) != "new" and n not in {x["node"] for x in done}]
         slipping = [n for n in after if (after[n].get("slipping") and not (before.get(n) or {}).get("slipping"))]
-        cards = [r for r in rows_of[t] if r.get("kind") == "card" and r.get("source") not in ("lesson", "predict")]
+        cards = [r for r in rows_of[t] if r.get("kind") == "card" and not is_diagnostic(r)]
         first: dict[str, dict] = {}
         for r in cards:
             first.setdefault(r.get("node"), r)
@@ -1967,7 +2525,7 @@ def build_export() -> dict:
             "data_warnings": [{"file": p["file"], "line": p["line"]} for p in scan_data()],
             "learner": {"active_track": load_state().get("active_track"), "study_days": days,
                         "streak": streak(days), "started": days[0] if days else None,
-                        "gains": export_gains(), "milestones": stones, "recent": export_recent()},
+                        "gains": export_gains(), "milestones": stones, "recent": export_recent(), "band": band()},
             "tracks": [track_export(t) for t in all_tracks()]}
 
 
@@ -3790,7 +4348,7 @@ def cmd_migrate(a):
         sys.exit(1)
 
 
-WRITE_COMMANDS = {"new-track", "use", "add-card", "record", "retire", "task", "moment"}
+WRITE_COMMANDS = {"new-track", "use", "add-card", "record", "record-lesson", "retire", "task", "moment"}
 
 
 def writes(a) -> bool:
@@ -3800,6 +4358,28 @@ def writes(a) -> bool:
 
 EXPORT_FILE = "export.json"
 LMAP_BLOCK = re.compile(r'<svg class="lmap"[^>]*>.*?</svg>', re.S)
+POS_SLOT = re.compile(r'<div\s+class="position-slot"[^>]*>')
+_POS_ATTR = re.compile(r"""\s*data-pos=(?:'[^']*'|"[^"]*")""")
+
+
+def position_data(t: dict) -> dict:
+    """What a lesson's `.position-slot` renders (data-pos): the export's position, path cut to POSITION_PATH."""
+    pos = t["position"]
+    path = pos["path"][:POSITION_PATH]
+    return {"track": t["id"], "done": pos["done"], "total": pos["total"], "learning": pos["learning"],
+            "current": pos["current"], "path": path, "labels": {k: pos["labels"][k] for k in path if k in pos["labels"]}}
+
+
+def fill_position_slots(text: str, pos: dict) -> str:
+    """Set (or replace) data-pos on every `<div class="position-slot" …>` of a page: single-quoted JSON, with
+    &#39; for apostrophes and &lt; &gt; &amp; for markup characters (the other attributes, e.g. data-style, stay)."""
+    raw = json.dumps(pos, ensure_ascii=False, separators=(",", ":"))
+    attr = " data-pos='" + raw.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("'", "&#39;") + "'"
+
+    def sub(m):
+        tag = _POS_ATTR.sub("", m.group(0))
+        return tag[:-1].rstrip() + attr + ">"
+    return POS_SLOT.sub(sub, text)
 
 
 def write_if_changed(path: Path, data: bytes) -> bool:
@@ -3812,7 +4392,8 @@ def write_if_changed(path: Path, data: bytes) -> bool:
 def refresh() -> dict:
     """Bring every generated view up to date, in order: learner/export.json (the data source) → learner/dashboard.html
     (rendered from it) → each lesson's <svg class="lmap"> (from its <!-- lesson-map: … --> comment; only that block
-    is replaced; lessons without the comment are skipped). Unchanged files are not rewritten."""
+    is replaced; lessons without the comment are skipped) and the data-pos of its `.position-slot` (the track's
+    position from the export). Unchanged files are not rewritten."""
     data = build_export()
     LEARNER.mkdir(exist_ok=True)
     atomic_write_bytes(LEARNER / EXPORT_FILE, (json.dumps(data, ensure_ascii=False, indent=1) + "\n").encode("utf-8"))
@@ -3820,19 +4401,21 @@ def refresh() -> dict:
     by_id = {t["id"]: t for t in data["tracks"]}
     updated, problems = [], []
     for t in data["tracks"]:
+        pos = position_data(t)
         for les in t["lessons"]:
             f = ROOT / les["path"]
             text = f.read_text(encoding="utf-8")
+            new = text
             args = lesson_map_args(text)
-            if not args or len(LMAP_BLOCK.findall(text)) != 1:
-                continue
-            try:
-                svg = lesson_map_svg(args["track"], args["nodes"].split(","), None, by_id.get(args["track"]))
-            except SystemExit as e:  # unknown node / missing map: leave the page as it is, say why
-                problems.append(f"{les['path']}: {e}")
-                continue
-            new = LMAP_BLOCK.sub(lambda _: svg, text, count=1)
-            if write_if_changed(f, new.encode("utf-8")):
+            if args and len(LMAP_BLOCK.findall(text)) == 1:
+                try:
+                    svg = lesson_map_svg(args["track"], args["nodes"].split(","), None, by_id.get(args["track"]))
+                    new = LMAP_BLOCK.sub(lambda _: svg, new, count=1)
+                except SystemExit as e:  # unknown node / missing map: leave the map as it is, say why
+                    problems.append(f"{les['path']}: {e}")
+            if POS_SLOT.search(new):  # the page's "where are we" box renders from data-pos (assets/components.js)
+                new = fill_position_slots(new, pos)
+            if new != text and write_if_changed(f, new.encode("utf-8")):
                 updated.append(les["path"])
     return {"export": rel(LEARNER / EXPORT_FILE), "dashboard": rel(LEARNER / "dashboard.html"),
             "lessons_updated": updated, "problems": problems}
@@ -3889,6 +4472,8 @@ def main(argv: list[str] | None = None):
     s.add_argument("--ahead", type=int, default=0, help="look N days ahead (e.g. 1 = what tomorrow brings)")
     s.add_argument("--today-misses", action="store_true",
                    help="cards answered wrong / 'don't know' today and tasks with 2+ hints today (wrap-up retest)")
+    s.add_argument("--html", action="store_true",
+                   help="write learner/reviews/review-<today>.html: a mixed review page (no topic or node names)")
     s.set_defaults(fn=cmd_due)
 
     s = sub.add_parser("record", help="record an answer; grades option cards itself")
@@ -3905,6 +4490,11 @@ def main(argv: list[str] | None = None):
                    help="lesson = answer pasted from an HTML lesson's quiz; predict = a guess before teaching "
                         "(both diagnostic only: no scheduling, no mastery)")
     s.set_defaults(fn=cmd_record)
+
+    s = sub.add_parser("record-lesson", help="record a pasted lesson/review page result block (stdin): v3 mcq items are "
+                                             "graded and scheduled; yaz/soru items go to tracks/<t>/inbox.md")
+    s.add_argument("--session", help="free label, e.g. 2026-10-08-a")
+    s.set_defaults(fn=cmd_record_lesson)
 
     s = sub.add_parser("cards", help="cards of a track (optionally per node) with answers, for building a lesson")
     s.add_argument("--track", required=True)
@@ -3941,7 +4531,7 @@ def main(argv: list[str] | None = None):
     s.set_defaults(fn=cmd_map)
 
     s = sub.add_parser("moment", help="log an engagement moment so pacing knows about it")
-    s.add_argument("--kind", required=True, help="recap|cheatsheet|teaser|value|milestone")
+    s.add_argument("--kind", required=True, help="recap|cheatsheet|teaser|value|milestone|lesson|advice|presence")
     s.add_argument("--note", default="")
     s.set_defaults(fn=cmd_moment)
 

@@ -1,4 +1,4 @@
-/* Ortak ders bileşenleri (assets/components.js). Her ders ve referans sayfası bunu yükler.
+/* Ortak ders bileşenleri (assets/components.js). Her ders, tekrar ve referans sayfası bunu yükler.
  *
  * 1) Quiz kartı — çoktan seçmeli soru (LH soru kartı görünümü):
  *    <div class="quiz" data-card="pts-010" data-answer="1" [data-label="Tahmin"]>
@@ -16,20 +16,52 @@
  *    eminlik seçici (Tahmin=1, Emin değilim=2, Eminim=3), isteğe bağlı tek satırlık "Neden?" alanı
  *    ve "Cevapla" düğmesi ekler. Şık seçmek cevaplamak değildir; "Cevapla" (ya da Neden? alanında
  *    Enter) kilitler ve doğru/yanlış geri bildirimini gösterir. Bilmiyorum seçilince eminlik 1 olur.
- *    data-card'sız kart (eski dersler 0001–0002): eski davranış — şıkka tıklamak hemen cevaplar.
+ *    data-card'sız kart (eski dersler 0001–0002): eski davranış — şıkka tıklamak hemen cevaplar;
+ *    sonuç bloğuna girmez.
  *
- *    Puan hiçbir yerde gösterilmez. Sayfada <div class="score"></div> varsa, bütün sorular cevaplanınca
- *    data-card'lı sorular için kopyalanabilir SONUÇ SATIRI çıkar (Kopyala düğmesiyle):
+ * 2) Açık cevap kutusu — <div class="write" data-card="gt-020" [data-label="Yaz"]><p class="q">Soru</p></div>
+ *    Açık uçlu (recall/explain) kartlar için; `tools/learn cards --html` ve `due --html` bunu üretir. JS
+ *    büyüyen bir textarea ("Kendi cümlelerinle… (bakmadan)"), quiz'le aynı eminlik seçiciyi ve "Kaydet"
+ *    düğmesini ekler. Kaydet kutuyu kilitler ("Düzenle" bağlantısı geri açar). Model cevap sayfada DURMAZ;
+ *    öğretmen sohbette puanlar (motor yaz: satırını inbox'a yazar). Taslak ve eminlik localStorage'da
+ *    kalır: anahtar `teach-write:<sayfa kimliği>:<kart>` (sayfa kimliği = main[data-lesson] ya da
+ *    main[data-review] değeri). Kaydedilen kutu sonuç çubuğunda bir "öğe" sayılır.
  *
- *      ders sonucu 0003: gt-012=B/3 "çünkü ikisi de sapmak ister"; gt-013=?/1; gt-014=A/2
+ * 3) Soru kutusu — <div class="ask-box"></div> (sayfada en fazla bir tane; isteğe bağlı <p class="q">)
+ *    "Anlamadığım / sormak istediğim" textarea'sı. localStorage `teach-ask:<dosya adı>` (ör. 0002-goz-goze,
+ *    review-2026-11-05). Boş olmayan her satır blokta bir `soru:` satırı olur. Puanlanmaz, öğe sayılmaz;
+ *    yalnız soru yazılmış bir sayfada da sonuç çubuğu (Kopyala) çıkar.
  *
- *    Öğe = KART=SEÇİM/EMİNLİK [boşluk "neden"], öğeler "; " ile ayrılır. SEÇİM: A, B, C, … ya da
- *    ? (Bilmiyorum). EMİNLİK: 1–3. Neden metni çift tırnak içinde, tek satır; içindeki " → ' olur.
- *    ESKİ BİÇİM (0001–0002 dönemi, hâlâ okunur): "ders sonucu 0002: pts-010=B pts-015=C" —
- *    boşlukla ayrılmış KART=HARF, eminlik ve neden yok. teachLesson.parseResult ikisini de okur.
- *    Öğretmen her öğeyi `tools/learn record --source lesson` ile kaydeder (lesson SKILL.md).
+ * 4) Süre — <div class="timer" data-card="gt-030" data-seconds="60"></div> (mülakat tipi sorular; isteğe bağlı)
+ *    Başlat/Durdur düğmesi ve geri sayım. Durdurulunca ya da süre bitince geçen saniye o kart için
+ *    kaydedilir (`süre:` satırı; localStorage `teach-timer:<sayfa kimliği>:<kart>`). "Yeniden" üstüne yazar.
  *
- * 2) Ödeme matrisi — <div class="payoff-game" data-game='{...}'></div>
+ * 5) SONUÇ BLOĞU (v3) — docs/plan-yontem-guncelleme.md "Veri biçimleri" §1 ile birebir. İlk data-card'lı
+ *    cevaptan (quiz ya da kaydedilmiş yazı) sonra alttan yapışkan .result-bar çıkar: "4 öğeden 2'si
+ *    cevaplandı · kopyala, sohbete yapıştır" + tek Kopyala düğmesi (o anki bloğu kopyalar). Bütün öğeler
+ *    bitince aynı blok sayfadaki <div class="score"></div> içinde <pre> olarak da görünür. Puan hiçbir
+ *    yerde gösterilmez. Blok:
+ *
+ *      ders sonucu 0003 v3                       ← main[data-lesson]; tekrar sayfasında "tekrar sonucu 2026-11-05 v3"
+ *      mcq: gt-012=B/3 "çünkü ikisi de sapmak ister"; gt-013=?/1; gt-014=A/2
+ *      yaz: gt-020/2 | Nash dengesi, kimsenin tek başına sapmak istemediği durum ⏎ ikinci satır
+ *      soru: Peki iki denge varsa hangisi seçilir?
+ *      süre: gt-030=58s
+ *
+ *    mcq: öğeler "; " ile; KART=SEÇİM/EMİNLİK ["neden"]; SEÇİM A–H ya da ? (Bilmiyorum); neden tek satır,
+ *    içindeki " → '. yaz: kaydedilmiş her kutu için bir satır: KART/EMİNLİK | metin; satır sonu " ⏎ ",
+ *    metindeki | → /. Boş kutu satır üretmez. soru: .ask-box'ın her dolu satırı. süre: KART=saniye s, "; " ile.
+ *    Olmayan satır yazılmaz; sıra sabit değil. window.teachLesson.buildResult() o anki bloğu döndürür;
+ *    teachLesson.parseResult(metin) v3 bloğu VE eski biçimleri okur:
+ *      ESKİ (tek satır, 0003 dönemi):  ders sonucu 0003: gt-012=B/3 "neden"; gt-013=?/1   (format: "new")
+ *      EN ESKİ (0001–0002 dönemi):     ders sonucu 0002: pts-010=B pts-015=C             (format: "old")
+ *    Öğretmen bloğu `tools/learn record-lesson` ile tek seferde kaydeder (lesson SKILL.md).
+ *
+ * 6) Tekrar sayfası — `tools/learn due --html` → learner/reviews/review-YYYY-MM-DD.html,
+ *    <main data-review="YYYY-MM-DD">, assets ../../assets/. Üst çubuk (.lesson-bar) yoktur; burada hiçbir
+ *    şey ../../../ varsaymaz (ikon ve logo <script src>'den türetilir). Blok başlığı "tekrar sonucu … v3".
+ *
+ * 7) Ödeme matrisi — <div class="payoff-game" data-game='{...}'></div>
  *    {
  *      "rows": {"player": "Britanya", "s": ["Sınırla", "İnşa et"]},
  *      "cols": {"player": "Almanya",  "s": ["Sınırla", "İnşa et"]},
@@ -38,7 +70,7 @@
  *      "caption": "..."
  *    }
  *
- * 3) Doğruluk tablosu — <div class="truth-table" data-tt='{...}'></div>
+ * 8) Doğruluk tablosu — <div class="truth-table" data-tt='{...}'></div>
  *    {
  *      "vars": ["P", "Q"],                         // satırlar: bütün kombinasyonlar, önce D
  *      "given": ["P ⇒ Q"],                         // hazır gösterilen sütunlar (isteğe bağlı)
@@ -49,66 +81,130 @@
  *    İfadeler: değişkenler büyük harf; ¬ (ya da !, ~), ∧ (&, and), ∨ (|, or), ⇒ (->), ⇔ (<->), parantez.
  *    Öncelik: ¬ > ∧ > ∨ > ⇒ > ⇔; ⇒ sağdan bağlar. Hücreye tıkla: boş → D → Y → boş.
  *
- * 4) Diyagram — elle yazılmış <svg class="diagram"> (biçim style.css'te "Diyagram" başlığında).
+ * 9) Diyagram — elle yazılmış <svg class="diagram"> (biçim style.css'te "Diyagram" başlığında).
  *    Bu dosya ok başlarını (#dg-arrow, #dg-arrow-dim) sayfaya bir kez ekler.
  *
- * 5) Matematik (isteğe bağlı) — ders <head>'inde assets/vendor/katex dosyaları yüklüyse \( … \),
+ * 9b) Konum görseli — "neredeyiz / hangi yöne" küçük SVG; ders ve Harita sayfalarında, hedef kartının altında:
+ *    <div class="position-slot" data-style="path|pyramid|ring" data-pos='{"track":"t","done":6,"total":15,
+ *      "learning":2,"current":"negation","path":["negation","direct-proof","…"],"labels":{"negation":"Olumsuzlama"}}'></div>
+ *    data-pos'u `tools/learn refresh` export.json'dan doldurur (lmap SVG'si gibi); boşsa hiçbir şey çizilmez.
+ *    path (varsayılan): yatay adımlayıcı — path id'leri soldan sağa kutular ve oklar, şimdiki kalın çerçeveli, hedef
+ *    en sağda; altında ince çizgi "6 / 15 düğüm". pyramid: katlar alttan yukarı (temel altta, hedef tepede): biten
+ *    gri dolu, şimdiki çerçeveli, gelecek soluk. ring: biten/toplam halkası, ortada şimdiki etiket, altında "→ sonraki".
+ *    Diyagramın node/edge sınıflarını (visited/current/dim) ve tokenları kullanır; yüzde ya da başka sayı yok.
+ *    data-style ders ders değiştirilebilir.
+ *
+ * 10) Matematik (isteğe bağlı) — ders <head>'inde assets/vendor/katex dosyaları yüklüyse \( … \),
  *    \[ … \] ve $$ … $$ işlenir (geri bildirim metinleri dahil). Yüklü değilse metin olduğu gibi kalır.
  *
- * 6) Ders modu (tools/lesson-template.html'deki iskelet; hepsi isteğe bağlı, yoksa sessizce atlanır):
+ * 11) Ders modu (tools/lesson-template.html'deki iskelet; hepsi isteğe bağlı, yoksa sessizce atlanır):
  *    - Tema: ?theme=light|dark ya da localStorage "teach-theme" (panoyla aynı anahtar) <html data-theme>'i
  *      sayfa çizilmeden ayarlar; .theme-btn tıklanınca açık/koyu değişir (window.teachToggleTheme).
  *    - Adımlar: <section class="step" [data-title="Kısa ad"]><h2>…</h2> … </section>. JS her h2'nin üstüne
  *      "ADIM i" yazar, .lesson-bar .lb-step çipini "ADIM 3 · Başlık" olarak kaydırdıkça günceller
  *      (IntersectionObserver), .lb-progress i çizgisini kaydırma oranına göre doldurur ve [data-step-count]
- *      / [data-check-count] öğelerine sayıları yazar; hedef kartında bu sayılar gizlenir (çip tekrarı).
+ *      / [data-check-count] öğelerine sayıları yazar (kontrol = data-card'lı quiz + write); hedef kartında
+ *      bu sayılar gizlenir (çip tekrarı). Çubuk yoksa (tekrar sayfası) hepsi sessizce atlanır.
  *    - Harita yuvası: <div class="lmap-slot" data-track data-nodes="a,b" data-current="a"> içine
  *      `tools/learn lesson-map` çıktısı (<svg class="lmap">) yapıştırılır. SVG yoksa JS düğümleri sade
  *      çiplerle gösterir. SVG'yi `tools/learn refresh` doldurur (sarı yalnızca konunun sıradaki düğümü).
- *    - Sonuç çubuğu: data-card'lı ilk soru cevaplanınca alttan yapışkan .result-bar çıkar:
- *      "3 sorudan 2'si cevaplandı · kopyala, sohbete yapıştır" + sonuç satırı + Kopyala. Bütün
- *      data-card'lı sorular bitince aynı satır sayfa sonundaki .score içinde de görünür.
+ *    - Sonuç çubuğu: bkz. 5.
  *
- * 7) Panoya gömülü: pano dersi iframe'de "?embed=1&theme=…" ile açar. Ders bunu (ya da iframe içinde olduğunu)
+ * 12) Panoya gömülü: pano dersi iframe'de "?embed=1&theme=…" ile açar. Ders bunu (ya da iframe içinde olduğunu)
  *    görünce <html class="embed"> olur: üst çubukta yalnız adım çipi ve ilerleme çizgisi kalır; tema panoyu
  *    izler; başka derse / referansa giden bağlantıları pano kendi sekmesinde / yan panelinde açar.
  *    Tek başına açılan ders eskisi gibi çalışır. Derslerde ayrıca bir şey yapmak gerekmez.
  *
  * Dikkat: data-* JSON'ları tek tırnakla yazılır; metindeki kesme işaretini &#39; olarak yaz ("Britanya&#39;nın").
+ * localStorage'a her erişim try/catch içindedir (gizli pencere, file:// kısıtı): depo yoksa sayfa yine çalışır.
  */
 (function () {
   "use strict";
   var LETTERS = "ABCDEFGH";
   var CONF = [null, "Tahmin", "Emin değilim", "Eminim"]; // 1 / 2 / 3 → tools/learn --confidence
 
-  // ---------- Sonuç satırı (saf işlevler; node ile test edilebilir) ----------
+  // ---------- Sonuç bloğu (saf işlevler; node ile test edilebilir) ----------
   function cleanWhy(t) {
     return String(t || "").replace(/\s+/g, " ").replace(/"/g, "'").trim().slice(0, 240);
   }
+  // yaz:/soru: metni tek satıra: satır sonu " ⏎ ", | → /, boş satırlar atılır.
+  function cleanText(t) {
+    return String(t || "").replace(/\r\n?/g, "\n").split("\n")
+      .map(function (l) { return l.replace(/[ \t]+/g, " ").trim(); }).filter(Boolean)
+      .join(" ⏎ ").replace(/\|/g, "/").slice(0, 4000);
+  }
+  function mcqItem(it) {
+    var s = it.card + "=" + it.choice + "/" + it.confidence, w = cleanWhy(it.why);
+    return w ? s + ' "' + w + '"' : s;
+  }
+  // ESKİ tek satır (hâlâ üretilebilir; sayfa artık formatBlock kullanır).
   // items: [{card: "gt-012", choice: "B" | "?", confidence: 1-3, why: "…"}]
   function formatResult(lesson, items) {
-    return "ders sonucu " + lesson + ": " + items.map(function (it) {
-      var s = it.card + "=" + it.choice + "/" + it.confidence, w = cleanWhy(it.why);
-      return w ? s + ' "' + w + '"' : s;
-    }).join("; ");
+    return "ders sonucu " + lesson + ": " + items.map(mcqItem).join("; ");
   }
-  // Yeni ve eski biçimi okur → {lesson, format: "new"|"old", items: [{card, choice, confidence|null, why|null}]}
-  function parseResult(line) {
-    var m = /^\s*ders sonucu\s+([^\s:]+)\s*:\s*(.*)$/.exec(String(line));
-    if (!m) return null;
-    var re = /([^\s=;"]+)=([A-Za-z?])(?:\/([1-3]))?(?:\s+"([^"]*)")?/g, items = [], x, isNew = false;
-    while ((x = re.exec(m[2]))) {
-      if (x[3]) isNew = true;
-      items.push({ card: x[1], choice: x[2].toUpperCase(), confidence: x[3] ? +x[3] : null, why: x[4] || null });
+  // v3 blok. r = {kind: "ders"|"tekrar", id, mcq: [mcq öğeleri], writes: [{card, confidence, text}],
+  //              questions: ["…"], seconds: [{card, seconds}]}
+  function formatBlock(r) {
+    var lines = [(r.kind || "ders") + " sonucu " + r.id + " v3"];
+    if (r.mcq && r.mcq.length) lines.push("mcq: " + r.mcq.map(mcqItem).join("; "));
+    (r.writes || []).forEach(function (w) {
+      var t = cleanText(w.text);
+      if (t) lines.push("yaz: " + w.card + "/" + w.confidence + " | " + t);
+    });
+    (r.questions || []).forEach(function (q) {
+      var t = cleanText(q);
+      if (t) lines.push("soru: " + t);
+    });
+    if (r.seconds && r.seconds.length) {
+      lines.push("süre: " + r.seconds.map(function (s) { return s.card + "=" + s.seconds + "s"; }).join("; "));
     }
-    return { lesson: m[1], format: isNew ? "new" : "old", items: items };
+    return lines.join("\n");
+  }
+  function parseMcq(s, into) {
+    var re = /([^\s=;"]+)=([A-Za-z?])(?:\/([1-3]))?(?:\s+"([^"]*)")?/g, x, isNew = false;
+    while ((x = re.exec(s))) {
+      if (x[3]) isNew = true;
+      into.push({ card: x[1], choice: x[2].toUpperCase(), confidence: x[3] ? +x[3] : null, why: x[4] || null });
+    }
+    return isNew;
+  }
+  // v3 bloğu ve eski biçimleri okur →
+  // {kind: "ders"|"tekrar", lesson, format: "v3"|"new"|"old", items: [mcq], writes: [{card, confidence, text}],
+  //  questions: [..], seconds: [{card, seconds}]}; eski biçimlerde writes/questions/seconds boş.
+  function parseResult(text) {
+    var lines = String(text == null ? "" : text).replace(/\r\n?/g, "\n").split("\n");
+    while (lines.length && !lines[0].trim()) lines.shift();
+    var m = /^\s*(ders|tekrar)\s+sonucu\s+([^\s:]+)\s*(v3)?\s*:?\s*(.*)$/.exec(lines.shift() || "");
+    if (!m) return null;
+    var res = { kind: m[1], lesson: m[2], format: "v3", items: [], writes: [], questions: [], seconds: [] };
+    if (!m[3]) {
+      res.format = parseMcq(m[4], res.items) ? "new" : "old";
+      return res;
+    }
+    lines.forEach(function (line) {
+      var k = /^\s*(mcq|yaz|soru|süre|sure)\s*:\s?(.*)$/.exec(line);
+      if (!k) return;
+      var body = k[2];
+      if (k[1] === "mcq") parseMcq(body, res.items);
+      else if (k[1] === "yaz") {
+        var y = /^\s*([^\s\/|]+)\/([1-3])\s*\|\s?([\s\S]*)$/.exec(body);
+        if (y) res.writes.push({ card: y[1], confidence: +y[2], text: y[3].split(/\s*⏎\s*/).join("\n").trim() });
+      } else if (k[1] === "soru") {
+        var q = body.split(/\s*⏎\s*/).join("\n").trim();
+        if (q) res.questions.push(q);
+      } else {
+        var re = /([^\s=;]+)=(\d+)\s*s/g, x;
+        while ((x = re.exec(body))) res.seconds.push({ card: x[1], seconds: +x[2] });
+      }
+    });
+    return res;
   }
 
   if (typeof module !== "undefined" && module.exports) {
-    module.exports = { formatResult: formatResult, parseResult: parseResult, cleanWhy: cleanWhy };
+    module.exports = { formatResult: formatResult, formatBlock: formatBlock, parseResult: parseResult, cleanWhy: cleanWhy, cleanText: cleanText };
   }
   if (typeof document === "undefined") return;
-  window.teachLesson = { formatResult: formatResult, parseResult: parseResult };
+  window.teachLesson = { formatResult: formatResult, formatBlock: formatBlock, parseResult: parseResult, buildResult: buildResult };
 
   // ---------- Tema (panoyla aynı: ?theme= > localStorage "teach-theme" > sistem) ----------
   (function () {
@@ -169,11 +265,27 @@
     return n + "'" + s;
   }
 
-  function lessonId() {
-    var m = document.querySelector("main[data-lesson]");
-    if (m) return m.dataset.lesson;
-    var f = (location.pathname.split("/").pop() || "").replace(/\.html?$/, "");
-    return f || "ders";
+
+  // Sayfa kimliği: ders (main[data-lesson]) ya da tekrar (main[data-review]); yoksa dosya adı.
+  function pageInfo() {
+    var m = document.querySelector("main[data-review]");
+    if (m && m.dataset.review) return { kind: "tekrar", id: m.dataset.review };
+    m = document.querySelector("main[data-lesson]");
+    if (m && m.dataset.lesson) return { kind: "ders", id: m.dataset.lesson };
+    return { kind: "ders", id: pageSlug() || "ders" };
+  }
+  function pageSlug() {
+    var f = "";
+    try { f = decodeURIComponent(location.pathname.split("/").pop() || "").replace(/\.html?$/, ""); } catch (e) {}
+    return f;
+  }
+
+  // localStorage: her erişim try/catch (gizli pencere, kısıtlı file://). Yoksa sayfa depolamadan çalışır.
+  function loadJSON(key) {
+    try { var v = localStorage.getItem(key); return v ? JSON.parse(v) : null; } catch (e) { return null; }
+  }
+  function saveJSON(key, val) {
+    try { if (val == null) localStorage.removeItem(key); else localStorage.setItem(key, JSON.stringify(val)); } catch (e) {}
   }
 
   function el(tag, cls, text) {
@@ -197,79 +309,130 @@
     } catch (err) { console.error("KaTeX:", err); }
   }
 
+  // Panoya kopyala: navigator.clipboard, olmazsa geçici textarea + execCommand.
+  function copyText(t, done) {
+    var fallback = function () {
+      var ok = false, ta = document.createElement("textarea");
+      ta.value = t; ta.setAttribute("readonly", ""); ta.setAttribute("aria-hidden", "true");
+      ta.style.position = "fixed"; ta.style.top = "0"; ta.style.left = "0"; ta.style.opacity = "0";
+      document.body.appendChild(ta);
+      ta.select();
+      try { ok = document.execCommand("copy"); } catch (e) { ok = false; }
+      document.body.removeChild(ta);
+      done(ok);
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(t).then(function () { done(true); }, fallback);
+    } else fallback();
+  }
   // text: dize ya da o anki dizeyi döndüren işlev
   function copyButton(text) {
     var b = el("button", "btn", "Kopyala");
     b.type = "button";
     b.addEventListener("click", function () {
-      markDirty(false);
       var t = typeof text === "function" ? text() : text;
-      var done = function () { b.textContent = "Kopyalandı"; setTimeout(function () { b.textContent = "Kopyala"; }, 1500); };
-      var select = function () { var r = document.createRange(); r.selectNodeContents(b.previousSibling); getSelection().removeAllRanges(); getSelection().addRange(r); done(); };
-      if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(t).then(done, select);
-      else select();
+      copyText(t, function (ok) {
+        if (ok) markDirty(false);
+        b.textContent = ok ? "Kopyalandı" : "Kopyalanamadı";
+        setTimeout(function () { b.textContent = "Kopyala"; }, 1500);
+      });
     });
     return b;
+  }
+
+  // Eminlik seçici (quiz ve write aynı): [Tahmin | Emin değilim | Eminim]
+  function confButtons(onPick) {
+    var box = el("div", "conf-opts");
+    box.setAttribute("role", "radiogroup");
+    var btns = [1, 2, 3].map(function (n) {
+      var b = el("button", null, CONF[n]);
+      b.type = "button"; b.setAttribute("role", "radio"); b.setAttribute("aria-checked", "false");
+      b.addEventListener("click", function () { onPick(n); });
+      box.appendChild(b);
+      return b;
+    });
+    return { box: box, btns: btns, set: function (conf, disabled) {
+      btns.forEach(function (b, k) {
+        b.disabled = !!disabled;
+        b.setAttribute("aria-checked", !disabled && conf === k + 1 ? "true" : "false");
+      });
+    } };
+  }
+  function autoGrow(ta) {
+    ta.style.height = "auto";
+    ta.style.height = (ta.scrollHeight + 2) + "px";
+  }
+
+  // ---------- Sayfa sonucu: mcq + yaz + soru + süre tek yerde (v3 blok) ----------
+  var R = {
+    mcqOrder: [], mcq: {},          // data-card'lı quiz'ler, sayfa sırası → cevap
+    writeOrder: [], writes: {},     // .write[data-card] → kaydedilmiş {card, confidence, text}
+    asks: [],                       // .ask-box okuyucuları → [satır]
+    timerOrder: [], timers: {},     // .timer[data-card] → saniye
+    bar: null, ready: false
+  };
+  function resultState() {
+    var p = pageInfo();
+    return {
+      kind: p.kind, id: p.id,
+      mcq: R.mcqOrder.map(function (c) { return R.mcq[c]; }).filter(Boolean),
+      writes: R.writeOrder.map(function (c) { return R.writes[c]; }).filter(Boolean),
+      questions: R.asks.reduce(function (acc, f) { return acc.concat(f()); }, []),
+      seconds: R.timerOrder.filter(function (c) { return R.timers[c] != null; }).map(function (c) { return { card: c, seconds: R.timers[c] }; })
+    };
+  }
+  function buildResult() { return formatBlock(resultState()); }
+  function counts() {
+    var st = resultState();
+    return { total: R.mcqOrder.length + R.writeOrder.length, done: st.mcq.length + st.writes.length, questions: st.questions.length };
+  }
+
+  // Yapışkan sonuç çubuğu: ilk cevaptan (ya da ilk sorudan) sonra görünür, her değişiklikte güncellenir.
+  function renderBar(c) {
+    if (!R.bar) {
+      R.bar = el("div", "result-bar");
+      R.bar.setAttribute("role", "region");
+      R.bar.setAttribute("aria-label", "Sayfa sonucu");
+      var inner = el("div", "rb-inner");
+      inner.appendChild(el("span", "rb-count"));
+      inner.appendChild(copyButton(buildResult));
+      R.bar.appendChild(inner);
+      document.body.appendChild(R.bar);
+      document.body.classList.add("has-result-bar");
+      requestAnimationFrame(function () { requestAnimationFrame(function () { R.bar.classList.add("show"); }); });
+    }
+    var cnt = R.bar.querySelector(".rb-count");
+    cnt.textContent = "";
+    var noun = R.writeOrder.length ? " öğeden " : " sorudan ";
+    cnt.appendChild(el("b", null, c.total ? c.total + noun + trPoss(c.done) + " cevaplandı" : "Sorun hazır"));
+    cnt.appendChild(document.createTextNode(" · kopyala, sohbete yapıştır"));
+  }
+  function renderScore(c) {
+    var scoreEl = document.querySelector(".score");
+    if (!scoreEl) return;
+    scoreEl.textContent = ""; // puan gösterilmez; yalnızca sohbete taşınacak blok
+    if (!c.total || c.done < c.total) return;
+    var block = buildResult();
+    var wrap = el("div", "result-block");
+    wrap.appendChild(el("pre", null, block));
+    wrap.appendChild(copyButton(buildResult));
+    wrap.appendChild(el("span", "hint", "Sohbete yapıştır."));
+    scoreEl.appendChild(wrap);
+  }
+  function renderResult() {
+    if (!R.ready) return;
+    var c = counts();
+    if (!c.done && !c.questions && !R.bar) return;
+    renderBar(c);
+    renderScore(c);
   }
 
   // ---------- Quiz ----------
   function initQuizzes() {
     var quizzes = Array.prototype.slice.call(document.querySelectorAll(".quiz"));
-    var scoreEl = document.querySelector(".score");
-    var answered = 0, correct = 0, results = {};
-    var bound = quizzes.filter(function (q) { return !!q.dataset.card; });
-    var bar = null;
-
-    function boundItems() {
-      var items = [];
-      bound.forEach(function (quiz) { var r = results[quiz.dataset.card]; if (r) items.push(r); });
-      return items;
-    }
-
-    // Yapışkan sonuç çubuğu: ilk data-card'lı cevaptan sonra görünür, her cevapta güncellenir.
-    function renderBar() {
-      var items = boundItems();
-      if (!items.length) return;
-      var line = formatResult(lessonId(), items);
-      if (!bar) {
-        bar = el("div", "result-bar");
-        bar.setAttribute("role", "region");
-        bar.setAttribute("aria-label", "Ders sonucu");
-        var inner = el("div", "rb-inner");
-        inner.appendChild(el("span", "rb-count"));
-        inner.appendChild(el("code"));
-        inner.appendChild(copyButton(function () { return bar.dataset.line; }));
-        bar.appendChild(inner);
-        document.body.appendChild(bar);
-        document.body.classList.add("has-result-bar");
-        requestAnimationFrame(function () { requestAnimationFrame(function () { bar.classList.add("show"); }); });
-      }
-      bar.dataset.line = line;
-      var cnt = bar.querySelector(".rb-count");
-      cnt.textContent = "";
-      cnt.appendChild(el("b", null, bound.length + " sorudan " + trPoss(items.length) + " cevaplandı"));
-      cnt.appendChild(document.createTextNode(" · kopyala, sohbete yapıştır"));
-      var code = bar.querySelector("code");
-      code.textContent = line; code.title = line;
-    }
-
-    function renderScore() {
-      renderBar();
-      if (!scoreEl) return;
-      scoreEl.textContent = ""; // puan gösterilmez; yalnızca sohbete taşınacak sonuç satırı
-      var items = boundItems();
-      if (!items.length || items.length < bound.length) return;
-      var line = formatResult(lessonId(), items);
-      var wrap = el("div", "result-line");
-      wrap.appendChild(el("code", null, line));
-      wrap.appendChild(copyButton(line));
-      wrap.appendChild(el("span", "hint", "Sohbete yapıştır."));
-      scoreEl.appendChild(wrap);
-    }
-
     quizzes.forEach(function (quiz, qi) {
       var cardMode = !!quiz.dataset.card;
-      var q = quiz.querySelector(".q");
+      if (cardMode) R.mcqOrder.push(quiz.dataset.card);
       if (!quiz.querySelector(".quiz-label")) {
         quiz.insertBefore(el("div", "quiz-label", (quiz.dataset.label || "Soru") + " " + (qi + 1)), quiz.firstChild);
       }
@@ -284,13 +447,12 @@
 
       // i: seçilen şık sırası, -1 = Bilmiyorum
       function reveal(i, extra) {
-        if (quiz.dataset.card) markDirty(true); // only recorded questions have a result line to carry over
+        if (cardMode) markDirty(true); // only recorded questions have a result block to carry over
         var all = quiz.querySelectorAll(".opt");
         Array.prototype.forEach.call(all, function (o) { o.disabled = true; });
         var ok = i === answer;
         if (i >= 0) opts[i].classList.add("selected", ok ? "correct" : "incorrect");
         if (opts[answer]) opts[answer].classList.add("correct");
-        answered++; if (ok) correct++;
         if (fb) {
           fb.className = "feedback show " + (ok ? "ok" : "no");
           var rightWhy = opts[answer] ? opts[answer].dataset.why || "" : "";
@@ -300,7 +462,7 @@
           typeset(fb);
         }
         if (extra) extra(ok);
-        renderScore();
+        renderResult();
       }
 
       if (!cardMode) {
@@ -320,16 +482,8 @@
       var controls = el("div", "quiz-controls");
       var confRow = el("div", "quiz-row");
       confRow.appendChild(el("span", "ui-label", "Ne kadar eminsin?"));
-      var confBox = el("div", "conf-opts");
-      confBox.setAttribute("role", "radiogroup");
-      var confBtns = [1, 2, 3].map(function (n) {
-        var b = el("button", null, CONF[n]);
-        b.type = "button"; b.setAttribute("role", "radio"); b.setAttribute("aria-checked", "false");
-        b.addEventListener("click", function () { conf = n; update(); });
-        confBox.appendChild(b);
-        return b;
-      });
-      confRow.appendChild(confBox);
+      var cb = confButtons(function (n) { conf = n; update(); });
+      confRow.appendChild(cb.box);
       var whyRow = el("label", "quiz-row");
       whyRow.appendChild(el("span", "ui-label", "Neden?"));
       var why = el("input", "why-input");
@@ -359,17 +513,14 @@
         });
         var isDk = sel === -1;
         confRow.classList.toggle("dim", isDk);
-        confBtns.forEach(function (b, k) {
-          b.disabled = isDk;
-          b.setAttribute("aria-checked", !isDk && conf === k + 1 ? "true" : "false");
-        });
+        cb.set(conf, isDk);
         go.disabled = !ready();
         hint.textContent = sel === null ? "Önce bir şık, sonra eminlik seç." : (ready() ? "Hazırsan cevapla." : "Ne kadar emin olduğunu seç.");
       }
       function submit() {
         if (!ready()) return;
         var c = sel === -1 ? 1 : conf, w = cleanWhy(why.value);
-        results[quiz.dataset.card] = { card: quiz.dataset.card, choice: sel === -1 ? "?" : LETTERS[sel], confidence: c, why: w };
+        R.mcq[quiz.dataset.card] = { card: quiz.dataset.card, choice: sel === -1 ? "?" : LETTERS[sel], confidence: c, why: w };
         reveal(sel, function () {
           if (sel === -1) dk.classList.add("selected");
           var rec = el("div", "quiz-record");
@@ -383,7 +534,158 @@
       why.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); submit(); } });
       update();
     });
-    renderScore();
+  }
+
+  // ---------- Açık cevap kutusu: .write[data-card] ----------
+  function initWrites() {
+    var page = pageInfo();
+    Array.prototype.slice.call(document.querySelectorAll(".write[data-card]")).forEach(function (box, i) {
+      var card = box.dataset.card, key = "teach-write:" + page.id + ":" + card;
+      R.writeOrder.push(card);
+      if (!box.querySelector(".quiz-label")) {
+        box.insertBefore(el("div", "quiz-label", (box.dataset.label || "Yaz") + " " + (i + 1)), box.firstChild);
+      }
+      var ta = el("textarea", "write-input");
+      ta.rows = 3;
+      ta.placeholder = "Kendi cümlelerinle… (bakmadan)";
+      ta.setAttribute("aria-label", "Cevabın");
+      box.appendChild(ta);
+
+      var conf = null, saved = false;
+      var controls = el("div", "quiz-controls");
+      var confRow = el("div", "quiz-row");
+      confRow.appendChild(el("span", "ui-label", "Ne kadar eminsin?"));
+      var cb = confButtons(function (n) { conf = n; update(); persist(); });
+      confRow.appendChild(cb.box);
+      var actions = el("div", "quiz-actions");
+      var hint = el("span", "hint", "");
+      var go = el("button", "btn primary", "Kaydet");
+      go.type = "button";
+      actions.appendChild(hint); actions.appendChild(go);
+      controls.appendChild(confRow); controls.appendChild(actions);
+      box.appendChild(controls);
+
+      var rec = el("div", "quiz-record");
+      rec.hidden = true;
+      box.appendChild(rec);
+
+      function ready() { return !!ta.value.trim() && conf !== null; }
+      function update() {
+        cb.set(conf, false);
+        go.disabled = !ready();
+        hint.textContent = !ta.value.trim() ? "Önce yaz, sonra eminlik seç." : (ready() ? "Hazırsan kaydet." : "Ne kadar emin olduğunu seç.");
+      }
+      function persist() { saveJSON(key, { text: ta.value, conf: conf, saved: saved }); }
+      function lock() {
+        saved = true;
+        ta.readOnly = true;
+        box.classList.add("saved");
+        controls.hidden = true;
+        rec.textContent = "";
+        rec.appendChild(document.createTextNode("EMİNLİK "));
+        rec.appendChild(el("b", null, CONF[conf]));
+        rec.appendChild(document.createTextNode(" · "));
+        var edit = el("a", "edit", "Düzenle");
+        edit.href = "#";
+        edit.addEventListener("click", function (e) { e.preventDefault(); unlock(); persist(); renderResult(); ta.focus(); });
+        rec.appendChild(edit);
+        rec.hidden = false;
+        R.writes[card] = { card: card, confidence: conf, text: ta.value };
+      }
+      function unlock() {
+        saved = false;
+        ta.readOnly = false;
+        box.classList.remove("saved");
+        controls.hidden = false;
+        rec.hidden = true;
+        delete R.writes[card];
+        update();
+      }
+      ta.addEventListener("input", function () { autoGrow(ta); update(); persist(); });
+      go.addEventListener("click", function () {
+        if (!ready()) return;
+        lock(); persist(); markDirty(true); renderResult();
+      });
+
+      var s = loadJSON(key);
+      if (s && typeof s === "object") {
+        if (typeof s.text === "string") ta.value = s.text;
+        if (s.conf === 1 || s.conf === 2 || s.conf === 3) conf = s.conf;
+        if (s.saved && ready()) lock();
+      }
+      update();
+      autoGrow(ta);
+    });
+  }
+
+  // ---------- Soru kutusu: .ask-box ----------
+  function initAskBoxes() {
+    var key = "teach-ask:" + (pageSlug() || pageInfo().id);
+    Array.prototype.slice.call(document.querySelectorAll(".ask-box")).forEach(function (box, i) {
+      var k = i ? key + ":" + (i + 1) : key;
+      if (!box.querySelector(".ui-label, .q")) box.appendChild(el("div", "ui-label", "Anlamadığım / sormak istediğim"));
+      var ta = el("textarea", "ask-input");
+      ta.rows = 2;
+      ta.placeholder = "Her satır bir soru. Kopyala'yla sohbete gider.";
+      ta.setAttribute("aria-label", "Sorun");
+      box.appendChild(ta);
+      var s = loadJSON(k);
+      if (s && typeof s.text === "string") ta.value = s.text;
+      R.asks.push(function () {
+        return ta.value.split("\n").map(function (l) { return l.trim(); }).filter(Boolean);
+      });
+      ta.addEventListener("input", function () { autoGrow(ta); saveJSON(k, { text: ta.value }); renderResult(); });
+      autoGrow(ta);
+    });
+  }
+
+  // ---------- Süre: .timer[data-card][data-seconds] ----------
+  function initTimers() {
+    var page = pageInfo();
+    Array.prototype.slice.call(document.querySelectorAll(".timer[data-card]")).forEach(function (host) {
+      var card = host.dataset.card, limit = parseInt(host.dataset.seconds, 10) || 60;
+      var key = "teach-timer:" + page.id + ":" + card;
+      R.timerOrder.push(card);
+      var btn = el("button", "btn", "Başlat"), clock = el("span", "t-clock"), note = el("span", "hint", "");
+      btn.type = "button";
+      host.appendChild(el("span", "ui-label", "Süre"));
+      host.appendChild(clock); host.appendChild(btn); host.appendChild(note);
+      var t0 = null, iv = null;
+      function fmt(s) { s = Math.max(0, Math.round(s)); return Math.floor(s / 60) + ":" + ("0" + (s % 60)).slice(-2); }
+      function finish(elapsed) {
+        if (iv) clearInterval(iv);
+        iv = null; t0 = null;
+        elapsed = Math.min(limit, Math.max(1, Math.round(elapsed)));
+        R.timers[card] = elapsed;
+        saveJSON(key, { seconds: elapsed });
+        host.classList.remove("running"); host.classList.add("done");
+        clock.textContent = fmt(elapsed);
+        btn.textContent = "Yeniden";
+        note.textContent = elapsed + " sn kaydedildi";
+        renderResult();
+      }
+      function tick() {
+        var e = (Date.now() - t0) / 1000;
+        if (e >= limit) { finish(limit); return; }
+        clock.textContent = fmt(Math.ceil(limit - e));
+      }
+      btn.addEventListener("click", function () {
+        if (t0 !== null) { finish((Date.now() - t0) / 1000); return; }
+        t0 = Date.now();
+        host.classList.add("running"); host.classList.remove("done");
+        btn.textContent = "Durdur"; note.textContent = "";
+        clock.textContent = fmt(limit);
+        iv = setInterval(tick, 250);
+      });
+      var s = loadJSON(key);
+      if (s && s.seconds > 0) {
+        R.timers[card] = Math.min(limit, Math.round(s.seconds));
+        host.classList.add("done");
+        clock.textContent = fmt(R.timers[card]);
+        btn.textContent = "Yeniden";
+        note.textContent = R.timers[card] + " sn kaydedildi";
+      } else clock.textContent = fmt(limit);
+    });
   }
 
   // ---------- Ders modu: adımlar, üst çubuk çipi, ilerleme çizgisi ----------
@@ -409,7 +711,7 @@
       });
       if (!shown) meta.style.display = "none";
     });
-    var checks = document.querySelectorAll(".quiz[data-card]").length;
+    var checks = document.querySelectorAll(".quiz[data-card], .write[data-card]").length;
     document.querySelectorAll("[data-check-count]").forEach(function (e) { e.textContent = checks; });
     document.querySelectorAll(".theme-btn").forEach(function (b) {
       if (!b.hasAttribute("onclick")) b.addEventListener("click", function () { window.teachToggleTheme(); });
@@ -467,6 +769,67 @@
       });
       slot.appendChild(row);
     });
+  }
+
+  // ---------- Konum görseli: .position-slot[data-style][data-pos] (path | pyramid | ring) ----------
+  function esc(s) { return String(s == null ? "" : s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
+  function initPositions() {
+    document.querySelectorAll(".position-slot").forEach(function (slot) {
+      var raw = slot.dataset.pos;
+      if (!raw || !raw.trim()) return; // refresh doldurana kadar boş kalır (CSS gizler)
+      var p; try { p = JSON.parse(raw); } catch (e) { console.error("position JSON hatası:", e, slot); return; }
+      var path = Array.isArray(p.path) ? p.path : [], labels = p.labels || {}, idx = path.indexOf(p.current);
+      var done = Math.max(0, +p.done || 0), total = Math.max(done, +p.total || 0);
+      var lab = function (id) { var t = labels[id] || id || ""; return t.length > 18 ? t.slice(0, 17) + "…" : t; };
+      var st = function (i) { return idx < 0 ? "dim" : i < idx ? "visited" : i === idx ? "current" : "dim"; };
+      var style = slot.dataset.style === "pyramid" || slot.dataset.style === "ring" ? slot.dataset.style : "path";
+      var draw = { path: posPath, pyramid: posPyramid, ring: posRing }[style];
+      slot.innerHTML = draw(path, lab, st, done, total, idx);
+      slot.querySelector("svg").classList.add("diagram", "position", style);
+    });
+  }
+  function posBar(x, y, w, done, total) {
+    return '<rect class="pbar-track" x="' + x + '" y="' + y + '" width="' + w + '" height="3" rx="1.5"/>' +
+      (total ? '<rect class="pbar-fill" x="' + x + '" y="' + y + '" width="' + (w * done / total).toFixed(1) + '" height="3" rx="1.5"/>' : "") +
+      '<text class="meta" x="' + (x + w) + '" y="' + (y + 16) + '" text-anchor="end">' + done + " / " + total + " düğüm</text>";
+  }
+  // Yatay adımlayıcı: kutular soldan sağa, oklu; altında ince ilerleme çizgisi.
+  function posPath(path, lab, st, done, total) {
+    var gap = 26, h = 30, x = 0, parts = [], boxes = [];
+    path.forEach(function (id, i) {
+      var w = Math.max(60, lab(id).length * 6.6 + 18);
+      boxes.push({ x: x, w: w, id: id, i: i }); x += w + gap;
+    });
+    var W = Math.round(Math.max(120, x - gap));
+    boxes.forEach(function (b, k) {
+      if (k) parts.push('<path class="edge' + (st(b.i) === "dim" ? " dim" : "") + '" d="M' + (b.x - gap + 1) + "," + (h / 2) + " L" + (b.x - 1) + "," + (h / 2) + '"/>');
+      parts.push('<g class="node ' + st(b.i) + '"><rect x="' + b.x.toFixed(1) + '" y="0" width="' + b.w.toFixed(1) + '" height="' + h + '" rx="3"/>' +
+        '<text x="' + (b.x + b.w / 2).toFixed(1) + '" y="' + (h / 2) + '">' + esc(lab(b.id)) + "</text></g>");
+    });
+    parts.push(posBar(0, h + 14, W, done, total));
+    return '<svg viewBox="-1 -1 ' + (W + 2) + " " + (h + 36) + '" role="img" aria-label="Konum: ' + done + " / " + total + ' düğüm">' + parts.join("") + "</svg>";
+  }
+  // Piramit: temel altta (path[0]), hedef tepede; biten katlar gri dolu, şimdiki çerçeveli, gelecek soluk.
+  function posPyramid(path, lab, st, done, total) {
+    var n = path.length || 1, W = 320, h = 26, gap = 4, parts = [];
+    path.forEach(function (id, i) {
+      var w = W - (W * 0.72) * i / Math.max(1, n - 1), x = (W - w) / 2, y = (n - 1 - i) * (h + gap);
+      parts.push('<g class="node ' + st(i) + '"><rect x="' + x.toFixed(1) + '" y="' + y + '" width="' + w.toFixed(1) + '" height="' + h + '" rx="3"/>' +
+        '<text x="' + (W / 2) + '" y="' + (y + h / 2) + '">' + esc(lab(id)) + "</text></g>");
+    });
+    var H = n * (h + gap) - gap;
+    parts.push(posBar(0, H + 12, W, done, total));
+    return '<svg viewBox="-1 -1 ' + (W + 2) + " " + (H + 34) + '" role="img" aria-label="Konum: ' + done + " / " + total + ' düğüm">' + parts.join("") + "</svg>";
+  }
+  // Halka: biten/toplam yayı; ortada şimdiki düğüm, altında "→ sonraki".
+  function posRing(path, lab, st, done, total, idx) {
+    var r = 44, c = 2 * Math.PI * r, f = total ? c * done / total : 0, cur = idx >= 0 ? path[idx] : "", next = idx >= 0 ? path[idx + 1] : path[0];
+    return '<svg viewBox="0 0 140 150" role="img" aria-label="Konum: ' + done + " / " + total + ' düğüm">' +
+      '<circle class="ring-track" cx="70" cy="60" r="' + r + '"/>' +
+      '<circle class="ring-fill" cx="70" cy="60" r="' + r + '" transform="rotate(-90 70 60)" stroke-dasharray="' + f.toFixed(1) + " " + c.toFixed(1) + '"/>' +
+      '<g class="node current"><text x="70" y="55">' + esc(lab(cur)) + '</text></g>' +
+      '<text class="meta" x="70" y="74" text-anchor="middle">' + done + " / " + total + "</text>" +
+      (next ? '<text class="label" x="70" y="130" text-anchor="middle">→ ' + esc(lab(next)) + "</text>" : "") + "</svg>";
   }
 
   // ---------- Diyagram: ok başları (bir kez) ----------
@@ -748,12 +1111,18 @@
   document.addEventListener("DOMContentLoaded", function () {
     initBrand();
     initQuizzes();
+    initWrites();
+    initAskBoxes();
+    initTimers();
+    initPositions();
     initMatrices();
     initTruthTables();
     initDiagrams();
     initLessonMap();
     initSteps();
     initEmbed();
+    R.ready = true;
+    renderResult(); // depodan geri gelen kayıtlı yazılar / sorular varsa çubuk hemen çıkar
     typeset(document.querySelector("main") || document.body);
   });
 })();

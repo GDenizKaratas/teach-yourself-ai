@@ -10,9 +10,11 @@
 
 - **Önce hedefini sorar.** Birkaç soruyla asıl amacını bulur ve sana uygun dersi önerir.
 - **Ezberletmez, anlatır.** Temelden başlar, her seferinde tek adım ilerler. Cevaplarından seni tanır.
-- **Önce okursun, sonra sohbet.** Her gün kısa bir ders sayfası okursun. Ardından sohbette o dersten 6–10 soru gelir, her birinde "ne kadar eminsin" de sorulur. Kalan zaman, emin olup yanlış bildiğin yerlere ve emin olmadığın yerlere gider; cevabı sana vermez, ipuçlarıyla kendin bulursun.
-- **Unutturmaz.** Tekrar zamanı gelen konuları kısa ısınmalarla geri getirir.
-- **İlerlemeni gösterir.** Haritan, notların ve derslerin tek bir panoda durur.
+- **Önce bütün resim, sonra parçalar.** Her konu puansız bir harita sayfasıyla açılır; seviyeni ölçtükten sonra gün ona göre şekillenir: yeni başlayana çözümlü örnek → yarım örnek → kendin yap, bilene kısa sayfa → birkaç soru → gerçek bir vaka.
+- **Sayfada çalışırsın, sohbette derinleşirsin.** Ders sayfasındaki sorular, yazı kutuları ve "sormak istediğim" kutusu tek düğmeyle sohbete gelir. Claude emin olup yanlış bildiğin yerlerden başlar, yazdıklarını değerlendirir, sorularını cevaplar; cevabı sana vermez, ipuçlarıyla kendin bulursun.
+- **Unutturmaz.** Doğru bildiğin de başka bir gün tekrar sorulur; konular karışık gelir, konu adı yazmaz. Kalıcı öğrenme böyle oluyor.
+- **Seni tanır.** Sana nasıl sesleneceğini, kararlarını, hayatında olup biteni bilir; her oturum üç satırla başlar: neredeyiz, hangi yöne, sıradaki ne.
+- **İlerlemeni gösterir.** Haritan, notların ve derslerin tek bir panoda durur; her sayfada nerede olduğunun çizimi var.
 
 <p align="center"><img src="docs/img/harita.png" alt="Bir konunun haritası: temelden hedefe adımlar, sıradaki adım sarı, yanında notlar ve dokümanlar"></p>
 

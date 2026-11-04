@@ -84,6 +84,10 @@ If they ask you to just write it: say kindly that writing it themselves is the p
 4. Look for misconceptions in working code too (e.g. it passes by accident). Name them and record them in `misconceptions.md`.
 5. Record: `tools/learn task --track <t> --task NN-slug --node <node> --status passed|failed|explained --hints <n> --note "<one line>"`. If something went wrong, start the note with the miss class: `cue` (the idea never came to mind), `discrimination` (a neighbouring idea won), `slip` (right idea, wrong execution) or `structural` (a wrong model: also a `misconceptions.md` entry). Mark `explained` once the explain-back succeeds. Together with a delayed correct card, that makes the node **owned**.
 
+## Spoken, timed tasks (interview and talk goals)
+
+When the track's goal is an interview, a talk or any spoken performance, some tasks must be **spoken and timed**, because that is the target skill and written practice doesn't transfer to it by itself. Shape: `TASK.md` gives one prompt ("Rate limiter'ı 60 saniyede anlat: ne, neden, hangi bedel") and a time box (60 s / 5 min / 45 min); the learner speaks (phone voice memo, or the page's `.timer` + dictation into chat), then pastes or dictates what they said. `CHECK.md` is the rubric: the parts a complete answer must contain, in order. Grade against it exactly like a non-code task ("localize, don't correct"), record with `--note "spoken, 58s"`. For a 45-minute design case, `CHECK.md` follows the 4-step frame (requirements → high-level → core components → scaling) and the learner's own written draft from the lesson's `.write` box counts as the solution. One spoken task per week at least on such tracks; the first one in the first week, not at the end.
+
 ## Error-message moments
 
 When their code crashes, it's a teaching opportunity, not an obstacle. Have them read the traceback with you: the file, the line, the error type, and the message. Add the error type to `glossary.md` the first time it appears.

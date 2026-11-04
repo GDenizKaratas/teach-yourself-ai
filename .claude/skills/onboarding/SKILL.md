@@ -34,12 +34,20 @@ Leave the terminal for later. Introduce it when the first task needs it.
 
 Collect only what changes the teaching. The goal itself comes from the starter pack in §4 (don't ask it twice):
 
-- background (only as context; actual knowledge is measured by the probe, not assumed);
+- background (only as context; actual knowledge is measured after the organizer page, not assumed);
 - prior experience with the subject (any? from where?);
 - time per session (5, 15, 30 or 45 min; it may vary day to day, then we ask at each start; a 5-minute review-only day is fine) and days per week;
 - language preference.
 
 Don't ask for the OS. Take it from your environment's platform and write it into the profile.
+
+**The relationship questions (one AskUserQuestion, three questions, also when status says `relationship.md yok` for an existing learner):**
+
+1. "Sana nasıl sesleneyim?" — options: their first name (from intake or the git name), "hocam", a nickname (Other).
+2. "Nasıl bir öğretmen istersin?" — `Doğrudan ve eleştirel` (says plainly what is wrong and where, no softening) / `Sıcak ve destekleyici` (same honesty, gentler delivery) / `Nötr`.
+3. "Oturum sonunda nasıl vedalaşalım?" — "yarın görüşürüz" / "görüşürüz" / without a goodbye line; and "Arada hafif bir şaka olsun mu?" (yes/no) can ride as a fourth question.
+
+Write `learner/relationship.md` from `learner/relationship.example.md`: the frontmatter from the answers (`rhythm` from the time question above), empty "Kararları", "Hayatından", "Ne iyi geldi" sections. From now on `tools/learn status` prints it at every session start; the `teach`, `wrap-up` and `engagement` skills say how to use it.
 
 Write `learner/profile.md`:
 
@@ -56,6 +64,7 @@ Write `learner/profile.md`:
 ### How they learn: what lands, pace, calibration
 ### Strengths
 ### Recurring gaps / misconceptions
+## Entry mode (measured, per track; date + evidence)
 ## Stated preferences
 ```
 
@@ -67,6 +76,6 @@ Don't store contact details or anything sensitive the teaching doesn't need.
 
 - As soon as the goal is clear (from intake + confirmation), start the `researcher` for the first track **in the background**. It can work while you finish the profile and orientation.
 - Run `new-track`. It opens with the starter pack (`new-track/intake.md`): goal batch, critical follow-ups, a diagnosis with a named track proposal, the learner's go-ahead. Only then does it create the track, and it builds only the first 2–3 nodes in detail on day 1.
-- If the learner has no experience with the subject, skip the diagnostic probe. Teach the first node right away.
+- **No graded question on day one before a page.** `new-track` builds the organizer page (`lessons/0000-harita.html`) first; the learner reads it (10–15 min, can be right now), then three easy generative questions set the entry mode (`docs/method.md`). A declared complete beginner skips even those: novice mode, first lesson page next.
 - For a coding track: if `tools/doctor` shows Python is ready, the first win is `workspace/merhaba.py`, typed and run by the learner.
 - Then `wrap-up`.
